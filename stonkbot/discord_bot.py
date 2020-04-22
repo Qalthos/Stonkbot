@@ -42,6 +42,11 @@ async def log(ctx, price: int, time: str):
 
 
 @bot.command()
+async def source(ctx):
+    await ctx.send("I live at https://github.com/Qalthos/Stonkbot")
+
+
+@bot.command()
 async def stats(ctx, target: Optional[str] = None):
     logger.info("%s asked for stats", ctx.author.name)
     if target is None:
