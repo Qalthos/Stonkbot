@@ -1,0 +1,6 @@
+.env
+.*.sw?
+__pycache__
+disco_bot.log
+env
+turnips.db*
