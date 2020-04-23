@@ -1,7 +1,7 @@
 import logging
 import os
 
-from discord_bot import bot
+from stonkbot.discord_bot import bot
 
 
 if __name__ == "__main__":

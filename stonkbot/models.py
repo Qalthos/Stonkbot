@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 
 from turnips.archipelago import Island
 from turnips.ttime import TimePeriod
-from turnips.meta import MetaModel
 from turnips.model import ModelEnum
 from turnips.multi import RangeSet
 
@@ -18,26 +17,107 @@ class WeekData:
         if not self.is_current_week:
             if self.is_last_week:
                 self.set_previous_week()
-            self.island._data.timeline = {}
+            self.data.timeline = {}
 
         if price:
-            self.island._data.timeline[time] = price
-        elif time in self.island._data.timeline:
-            del self.island._data.timeline[time]
+            self.data.timeline[time] = price
+        elif time in self.data.timeline:
+            del self.data.timeline[time]
         self.island.process()
         self.updated = datetime.now()
 
     def set_previous_week(self):
-        mgroup = self.island.model_group
-        model_counter = Counter(model.model_type for model in mgroup.models)
+        model_group = self.island.model_group
+        model_counter = Counter(model.model_type for model in model_group.models)
 
         if len(model_counter) == 1:
-            self.island._data.previous_week = model_counter.most_common()[0][0]
+            self.data.previous_week = model_counter.most_common()[0][0]
         else:
-            self.island._data.previous_week = ModelEnum.unknown
+            self.data.previous_week = ModelEnum.unknown
 
     def rename(self, new_name):
         self.island._name = new_name
+
+    def summary(self):
+        yield f"Here's what I know about {self.island.name}:"
+        model_group = self.island.model_group
+
+        fixed_points = {}
+        speculations = {}
+        price_width = 0
+        likely_width = 0
+        last_fixed = "Sunday_PM"
+        for time, price_counts in model_group.histogram().items():
+            if len(price_counts) == 1:
+                fixed_points[time] = next(iter(price_counts.keys()))
+                last_fixed = time
+                continue
+
+            stats = {}
+            # Gather possible prices
+            price_set = RangeSet()
+            for price in price_counts.keys():
+                price_set.add(price)
+            stats["all"] = str(price_set)
+            price_width = max(price_width, len(str(price_set)))
+
+            # Determine likeliest price(s)
+            n_possibilities = sum(price_counts.values())
+            likeliest = max(price_counts.items(), key=lambda x: x[1])
+            likelies = list(filter(lambda x: x[1] >= likeliest[1], price_counts.items()))
+
+            sample_size = len(likelies) * likeliest[1]
+            pct = 100 * (sample_size / n_possibilities)
+            stats["chance"] = pct
+
+            likely_set = RangeSet()
+            for likely in likelies:
+                likely_set.add(likely[0])
+            stats["likely"] = str(likely_set)
+            likely_width = max(likely_width, len(str(likely_set)))
+
+            speculations[time] = stats
+
+        if TimePeriod[last_fixed] != TimePeriod.Sunday_PM:
+            days = []
+            values = []
+            for i in range(2, TimePeriod[last_fixed].value + 1):
+                time = TimePeriod(i).name
+                price = str(fixed_points.get(time, '--'))
+                values.append(price.center(4))
+                if i % 2 == 0:
+                    days.append(time[:-3].center(9))
+
+            yield "```"
+            yield "|".join(days)
+            yield "|".join(values)
+            yield "```"
+
+        model_count = Counter(model.model_name for model in model_group.models)
+        patterns = model_count.most_common()
+        pattern_str_list = [f"{count} {'are' if count > 1 else 'is'} {name}" for name, count in patterns]
+        if len(patterns) == 1:
+            yield f"Your pattern is {patterns[0][0]}"
+        elif len(patterns) == 2:
+            yield f"Out of {len(model_group)} possible patterns, {' and '.join(pattern_str_list)}"
+        else:
+            pattern_str_list[-1] = f"and {pattern_str_list[-1]}"
+            yield f"Out of {len(model_group)} possible patterns, {', '.join(pattern_str_list)}"
+
+        if TimePeriod[last_fixed] != TimePeriod.Saturday_PM:
+            yield "```"
+            yield f"Time          {'Price'.ljust(price_width)}"
+            for i in range(TimePeriod[last_fixed].value + 1, 14):
+                time = TimePeriod(i).name
+                stats = speculations[time]
+                yield f"{time:12}  {stats['all']:{price_width}}"
+
+            yield "```"
+            yield f"For more detail, check {self.prophet_link}"
+
+    @property
+    def data(self):
+        return self.island._data
 
     @property
     def is_current_week(self):
@@ -62,84 +142,6 @@ class WeekData:
             ModelEnum.bump: 3,
             ModelEnum.unknown: 4,
         }
-        prices = [str(self.island._data.base_price or "")] + [str(self.island._data.timeline.get(TimePeriod(i), "")) for i in range(2, 14)]
+        prices = [str(self.data.base_price or "")]
+        prices.extend((str(self.data.timeline.get(TimePeriod(i), "")) for i in range(2, 14)))
         return url.format(prices=".".join(prices), pattern=pattern_map[self.island.previous_week])
-
-    def summary(self):
-        yield f"Here's what I know about {self.island.name}:"
-        mgroup = self.island.model_group
-
-        fixed_points = {}
-        speculations = {}
-        pwidth = 0
-        lwidth = 0
-        last_fixed = "Sunday_PM"
-        for time, pricecounts in mgroup.histogram().items():
-            if len(pricecounts) == 1:
-                fixed_points[time] = next(iter(pricecounts.keys()))
-                last_fixed = time
-                continue
-
-            stats = {}
-            # Gather possible prices
-            pset = RangeSet()
-            for price in pricecounts.keys():
-                pset.add(price)
-            stats["all"] = str(pset)
-            pwidth = max(pwidth, len(str(pset)))
-
-            # Determine likeliest price(s)
-            n_possibilities = sum(pricecounts.values())
-            likeliest = max(pricecounts.items(), key=lambda x: x[1])
-            likelies = list(filter(lambda x: x[1] >= likeliest[1], pricecounts.items()))
-
-            sample_size = len(likelies) * likeliest[1]
-            pct = 100 * (sample_size / n_possibilities)
-            stats["chance"] = pct
-
-            rset = RangeSet()
-            for likely in likelies:
-                rset.add(likely[0])
-            stats["likely"] = str(rset)
-            lwidth = max(lwidth, len(str(rset)))
-
-            speculations[time] = stats
-
-        if TimePeriod[last_fixed] != TimePeriod.Sunday_PM:
-            days = []
-            values = []
-            for i in range(2, TimePeriod[last_fixed].value + 1):
-                time = TimePeriod(i).name
-                price = str(fixed_points.get(time, '--'))
-                values.append(price.center(4))
-                if i % 2 == 0:
-                    days.append(time[:-3].center(9))
-
-            yield "```"
-            yield "|".join(days)
-            yield "|".join(values)
-            yield "```"
-
-        model_count = Counter(model.model_name for model in mgroup.models)
-        # probably_model, probably_count = model_count.most_common(1)[0]
-        # yield f"I think there is a {probably_count / len(mgroup) * 100:.02f}% chance this is a {probably_model} pattern"
-        patterns = model_count.most_common()
-        pattern_strs = [f"{count} {'are' if count > 1 else 'is'} {name}" for name, count in patterns]
-        if len(patterns) == 1:
-            yield f"Your pattern is {patterns[0][0]}"
-        elif len(patterns) == 2:
-            yield f"Out of {len(mgroup)} possible patterns, {' and '.join(pattern_strs)}"
-        else:
-            pattern_strs[-1] = f"and {pattern_strs[-1]}"
-            yield f"Out of {len(mgroup)} possible patterns, {', '.join(pattern_strs)}"
-
-        if TimePeriod[last_fixed] != TimePeriod.Saturday_PM:
-            yield "```"
-            yield f"Time          {'Price'.ljust(pwidth)}  {'Likely'.ljust(lwidth)}  Odds"
-            for i in range(TimePeriod[last_fixed].value + 1, 14):
-                time = TimePeriod(i).name
-                stats = speculations[time]
-                yield f"{time:12}  {stats['all']:{pwidth}}  {stats['likely']:{lwidth}}  ({stats['chance']:0.2f}%)"
-
-            yield "```"
-            yield f"For more detail, check {self.prophet_link}"
