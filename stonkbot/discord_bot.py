@@ -54,6 +54,7 @@ async def stats(ctx, target: Optional[str] = None):
     elif target == "all":
         msg = db.all_stats()
     else:
+        logger.warning(f"Invalid target {target}")
         return
 
     await ctx.send(msg)
