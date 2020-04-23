@@ -97,12 +97,15 @@ class WeekData:
         patterns = model_count.most_common()
         pattern_str_list = [f"{count} {'are' if count > 1 else 'is'} {name}" for name, count in patterns]
         if len(patterns) == 1:
-            yield f"Your pattern is {patterns[0][0]}"
+            pattern = patterns[0][0]
+            if pattern == "decay":
+                pattern += ". Better luck next week"
+            yield f"Your pattern is {pattern}."
         elif len(patterns) == 2:
-            yield f"Out of {len(model_group)} possible patterns, {' and '.join(pattern_str_list)}"
+            yield f"Out of {len(model_group)} possible patterns, {' and '.join(pattern_str_list)}."
         else:
             pattern_str_list[-1] = f"and {pattern_str_list[-1]}"
-            yield f"Out of {len(model_group)} possible patterns, {', '.join(pattern_str_list)}"
+            yield f"Out of {len(model_group)} possible patterns, {', '.join(pattern_str_list)}."
 
         if TimePeriod[last_fixed] != TimePeriod.Saturday_PM:
             yield "```"
