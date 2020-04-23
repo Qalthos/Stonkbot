@@ -33,25 +33,33 @@ def user_stats(key: str) -> str:
 
 
 def all_stats() -> str:
+    islands = []
     with shelve.open("turnips.db", flag="r") as db:
-        islands = []
         for data in db.values():
             if data.is_current_week:
-                islands.append(data.island.model_group)
-        model = MetaModel(-1, islands)
-    return "\n".join(summary(model))
+                islands.append(data.island)
 
+    stats = {}
+    longest_pset = 0
+    for island in islands:
+        for time, pricecounts in island.model_group.histogram().items():
+            current_stat = stats.get(time, {})
 
-def summary(model):
-    yield "```"
-    yield "Time          Prices"
+            pset = current_stat.get("prices", RangeSet())
+            for price in pricecounts.keys():
+                pset.add(price)
+            longest_pset = max(longest_pset, len(str(pset)))
+            current_stat["prices"] = pset
+            max_price = max(pricecounts.keys())
 
-    for time, pricecounts in model.histogram().items():
-        # Gather possible prices
-        pset = RangeSet()
-        for price in pricecounts.keys():
-            pset.add(price)
+            if current_stat.get("top_price", {}).get("price", 0) < max_price:
+                current_stat["top_price"] = dict(name=island.name, price=max_price)
 
-        yield f"{str(time):13} {str(pset)}"
+            stats[time] = current_stat
 
-    yield "```"
+    msg = ["```", f"Time          {'Possible Prices'.ljust(longest_pset)} Top Possible Island"]
+    for time, statbundle in stats.items():
+        msg.append(f"{str(time):13} {str(statbundle['prices']).ljust(longest_pset)} {statbundle['top_price']['price']} at {statbundle['top_price']['name']}")
+    msg.append("```")
+
+    return "\n".join(msg)
