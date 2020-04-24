@@ -31,10 +31,14 @@ async def log(ctx: commands.Context, price: int, time: str) -> None:
 
     if price == 100:
         await react(ctx.message, "💯")
-    elif price <= 30:
+    elif price <= 10:
+        for reaction in ("😭", "📉", "😰"):
+            await react(ctx.message, reaction)
+    elif price < 45:
         await react(ctx.message, "😓")
     elif price >= 400:
-        await react(ctx.message, "📈")
+        for reaction in ("📈", "🥳", "💰"):
+            await react(ctx.message, reaction)
     else:
         await react(ctx.message)
 
