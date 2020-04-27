@@ -8,6 +8,9 @@ from turnips.ttime import TimePeriod
 from stonkbot.models import WeekData
 
 
+SHELVE_FILE = "turnips.db"
+
+
 def rename(key: str, island_name: str) -> bool:
     with shelve.open("turnips.db") as db:
         data = db.get(key)
@@ -25,6 +28,16 @@ def log(key: str, price: int, time: TimePeriod) -> None:
             data = WeekData(island=Island(name="[Unknown]", data=IslandModel(timeline={})))
         data.set_price(price, time)
         db[key] = data
+
+
+def meta_stats() -> str:
+    islands = 0
+    current = 0
+    with shelve.open(SHELVE_FILE, flag="r") as db:
+        islands = len(db.keys())
+        current = len([v for v in db.values() if v.is_current_week])
+
+    return f"I know about {islands} islands, of which I have current data for {current} of them."
 
 
 def user_stats(key: str) -> str:

@@ -53,6 +53,8 @@ async def stats(ctx: commands.Context, target: Optional[str] = None):
     logger.info("%s asked for stats", ctx.author.name)
     if target is None:
         msg = db.user_stats(str(ctx.author.id))
+    elif target == "stonkbot":
+        msg = db.meta_stats()
     elif target == "all":
         msg = db.all_stats()
     else:
