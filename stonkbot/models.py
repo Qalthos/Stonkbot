@@ -2,7 +2,7 @@ from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from turnips.archipelago import Island
+from turnips.archipelago import Island, IslandModel
 from turnips.ttime import TimePeriod
 from turnips.model import ModelEnum
 from turnips.multi import RangeSet
@@ -148,3 +148,20 @@ class WeekData:
         prices = [str(self.data.base_price or "")]
         prices.extend((str(self.data.timeline.get(TimePeriod(i), "")) for i in range(2, 14)))
         return url.format(prices=".".join(prices), pattern=pattern_map[self.island.previous_week])
+
+    # Migration methods
+    def dump(self):
+        return {
+            "island_name": self.island.name,
+            "updated": self.updated.isoformat(),
+            "prices": {k.name: v for k, v in self.data.timeline.items()},
+            "last_week": self.island.previous_week.name,
+        }
+
+    @classmethod
+    def load(cls, data):
+        timeline = {TimePeriod[k]: v for k, v in data["prices"].items()}
+        island = Island(name=data["island_name"], data=IslandModel(timeline=timeline))
+        instance = cls(island=island, updated=datetime.fromisoformat(data["updated"]))
+        instance.data.previous_week = ModelEnum[data["last_week"]]
+        return instance
