@@ -56,7 +56,7 @@ async def stats(ctx: commands.Context, target: Optional[str] = None):
     elif target == "all":
         msg = db.all_stats()
     else:
-        logger.warning(f"Invalid target {target}")
+        logger.warning("Invalid target %s", target)
         return
 
     await ctx.send(msg)
@@ -64,10 +64,10 @@ async def stats(ctx: commands.Context, target: Optional[str] = None):
 
 @bot.command()
 async def rename(ctx: commands.Context, *new_name: str) -> None:
-    new_name = " ".join(new_name)
-    logger.info("%s said their island was named %s", ctx.author.name, new_name)
+    name = " ".join(new_name)
+    logger.info("%s said their island was named %s", ctx.author.name, name)
 
-    if db.rename(str(ctx.author.id), new_name):
+    if db.rename(str(ctx.author.id), name):
         await react(ctx.message)
     else:
         await ctx.send("I don't know about any island of yours.")

@@ -1,4 +1,5 @@
 import shelve
+from typing import Dict
 
 from turnips.archipelago import Island, IslandModel
 from turnips.multi import RangeSet
@@ -39,7 +40,7 @@ def all_stats() -> str:
             if data.is_current_week:
                 islands.append(data.island)
 
-    stats = {}
+    stats: Dict[str, Dict] = {}
     longest_price_set = 0
     for island in islands:
         for time, price_counts in island.model_group.histogram().items():
