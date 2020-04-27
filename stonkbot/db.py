@@ -53,16 +53,15 @@ def all_stats() -> str:
             current_stat["prices"] = price_set
             max_price = max(price_counts.keys())
 
-            if current_stat.get("top_price", {}).get("price", 0) < max_price:
-                current_stat["top_price"] = dict(name=island.name, price=max_price)
+            current_stat["top_prices"] = current_stat.get("top_prices", []).append((max_price, island.name))
 
             stats[time] = current_stat
 
-    msg = ["```", f"Time          {'Possible Prices'.ljust(longest_price_set)} Top Possible Island"]
+    msg = ["```", f"Time          {'Possible Prices'.ljust(longest_price_set)} Top Three Islands"]
     for time, stat_bundle in stats.items():
         prices = str(stat_bundle['prices']).ljust(longest_price_set)
-        top_island = f"{stat_bundle['top_price']['price']} at {stat_bundle['top_price']['name']}"
-        msg.append(f"{str(time):13} {prices} {top_island}")
+        top_islands = " ".join(f"{datum[1]} ({datum[0]})" for datum in sorted(stat_bundle["top_prices"], reverse=True)[:3])
+        msg.append(f"{str(time):13} {prices} {top_islands}")
     msg.append("```")
 
     return "\n".join(msg)
