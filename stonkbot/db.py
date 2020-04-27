@@ -22,7 +22,7 @@ def log(key: str, price: int, time: TimePeriod) -> None:
     with shelve.open("turnips.db") as db:
         data = db.get(key)
         if not data:
-            data = WeekData(island=Island(name=key, data=IslandModel(timeline={})))
+            data = WeekData(island=Island(name="[Unknown]", data=IslandModel(timeline={})))
         data.set_price(price, time)
         db[key] = data
 
