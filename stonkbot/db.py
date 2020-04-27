@@ -36,12 +36,11 @@ def user_stats(key: str) -> str:
 def all_stats() -> str:
     islands = []
     with shelve.open("turnips.db", flag="r") as db:
-        for data in db.values():
-            if data.is_current_week:
-                islands.append(data.island)
+        for week_data in db.values():
+            if week_data.is_current_week:
+                islands.append(week_data.island)
 
     stats: Dict[str, Dict] = {}
-    longest_price_set = 0
     for island in islands:
         for time, price_counts in island.model_group.histogram().items():
             current_stat = stats.get(time, {})
@@ -49,19 +48,24 @@ def all_stats() -> str:
             price_set = current_stat.get("prices", RangeSet())
             for price in price_counts.keys():
                 price_set.add(price)
-            longest_price_set = max(longest_price_set, len(str(price_set)))
             current_stat["prices"] = price_set
             max_price = max(price_counts.keys())
 
-            current_stat["top_prices"] = current_stat.get("top_prices", []).append((max_price, island.name))
+            top_prices = current_stat.get("top_prices", [])
+            top_prices.append((max_price, island.name))
+            current_stat["top_prices"] = sorted(top_prices, reverse=True)
 
             stats[time] = current_stat
 
-    msg = ["```", f"Time          {'Possible Prices'.ljust(longest_price_set)} Top Three Islands"]
+    longest_price_set = 15
+    for stat in stats.values():
+        longest_price_set = max(longest_price_set, len(str(stat["prices"])))
+
+    msg = ["```", f"Time          {'Possible Prices'.ljust(longest_price_set)}  Top Three Islands"]
     for time, stat_bundle in stats.items():
         prices = str(stat_bundle['prices']).ljust(longest_price_set)
-        top_islands = " ".join(f"{datum[1]} ({datum[0]})" for datum in sorted(stat_bundle["top_prices"], reverse=True)[:3])
-        msg.append(f"{str(time):13} {prices} {top_islands}")
+        top_islands = " ".join(f"{datum[0]} ({datum[1]})" for datum in stat_bundle["top_prices"][:3])
+        msg.append(f"{str(time):12}  {prices}  {top_islands}")
     msg.append("```")
 
     return "\n".join(msg)
