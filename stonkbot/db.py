@@ -12,7 +12,7 @@ SHELVE_FILE = "turnips.db"
 
 
 def rename(key: str, island_name: str) -> bool:
-    with shelve.open("turnips.db") as db:
+    with shelve.open(SHELVE_FILE) as db:
         data = db.get(key)
         if not data:
             return False
@@ -22,7 +22,7 @@ def rename(key: str, island_name: str) -> bool:
 
 
 def log(key: str, price: int, time: TimePeriod) -> None:
-    with shelve.open("turnips.db") as db:
+    with shelve.open(SHELVE_FILE) as db:
         data = db.get(key)
         if not data:
             data = WeekData(island=Island(name="[Unknown]", data=IslandModel(timeline={})))
@@ -41,14 +41,14 @@ def meta_stats() -> str:
 
 
 def user_stats(key: str) -> str:
-    with shelve.open("turnips.db", flag="r") as db:
+    with shelve.open(SHELVE_FILE, flag="r") as db:
         island_data = db[key]
     return "\n".join(island_data.summary())
 
 
 def all_stats() -> str:
     islands = []
-    with shelve.open("turnips.db", flag="r") as db:
+    with shelve.open(SHELVE_FILE, flag="r") as db:
         for week_data in db.values():
             if week_data.is_current_week:
                 islands.append(week_data.island)
