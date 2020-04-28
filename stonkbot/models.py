@@ -116,7 +116,7 @@ class WeekData:
                 yield f"{time:12}  {stats['all']:{price_width}}"
 
             yield "```"
-            yield f"For more detail, check {self.prophet_link}"
+            yield f"For more detail, check <{self.prophet_link}>"
 
     @property
     def data(self):
