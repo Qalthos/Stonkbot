@@ -122,7 +122,9 @@ class WeekData:
         model_count = Counter(model.model_name for model in model_group.models)
         patterns = model_count.most_common()
         pattern_str_list = [f"{count} {'are' if count > 1 else 'is'} {name}" for name, count in patterns]
-        if len(patterns) == 1:
+        if len(patterns) == 0:
+            yield "Uh oh! Your prices don't match any pattern I know about"
+        elif len(patterns) == 1:
             pattern = patterns[0][0]
             if pattern == "decay":
                 pattern += ". Better luck next week"
