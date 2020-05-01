@@ -1,6 +1,6 @@
 from collections import Counter
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from turnips.archipelago import Island, IslandModel
 from turnips.ttime import TimePeriod
@@ -9,9 +9,33 @@ from turnips.multi import RangeSet
 
 
 @dataclass
+class Record:
+    price: int
+    date: date
+    is_am: bool
+
+    def set_price(self, price: int, is_am: bool):
+        self.price = price
+        self.date = date.today()
+        self.is_am = is_am
+
+    def dump(self):
+        return {
+            "price": self.price,
+            "date": self.date.isoformat(),
+            "is_am": self.is_am,
+        }
+
+    @classmethod
+    def load(cls, data):
+        return cls(price=data["price"], date=data["date"].fromisoformat(), is_am=data["is_am"])
+
+
+@dataclass
 class WeekData:
     island: Island
     updated: datetime = datetime(2020, 3, 20)
+    record: Record = Record(0, date.min, False)
 
     def set_price(self, price: int, time: TimePeriod):
         if not self.is_current_week:
@@ -21,6 +45,8 @@ class WeekData:
 
         if price:
             self.data.timeline[time] = price
+            if price > self.record.price:
+                self.record.set_price(price, time.value % 2 == 1)
         elif time in self.data.timeline:
             del self.data.timeline[time]
         self.island.process()
@@ -156,12 +182,14 @@ class WeekData:
             "updated": self.updated.isoformat(),
             "prices": {k.name: v for k, v in self.data.timeline.items()},
             "last_week": self.island.previous_week.name,
+            "record": self.record.dump(),
         }
 
     @classmethod
     def load(cls, data):
         timeline = {TimePeriod[k]: v for k, v in data["prices"].items()}
         island = Island(name=data["island_name"], data=IslandModel(timeline=timeline))
-        instance = cls(island=island, updated=datetime.fromisoformat(data["updated"]))
+        record = Record.load(data["record"])
+        instance = cls(island=island, updated=datetime.fromisoformat(data["updated"]), record=record)
         instance.data.previous_week = ModelEnum[data["last_week"]]
         return instance
