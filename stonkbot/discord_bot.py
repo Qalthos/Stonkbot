@@ -29,8 +29,12 @@ async def log(ctx: commands.Context, price: int, time: str) -> None:
     if price == random.randint(10, 660):
         await ctx.send("That's Numberwang!")
 
-    if price == 100:
+    if price == 69:
+        await react(ctx.message, "👌")
+    elif price == 100:
         await react(ctx.message, "💯")
+    elif price == 420:
+        await react(ctx.message, "🌿")
     elif price <= 10:
         for reaction in ("😭", "📉", "😰"):
             await react(ctx.message, reaction)
