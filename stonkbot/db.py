@@ -64,8 +64,14 @@ def all_stats() -> str:
             current_stat["prices"] = price_set
             max_price = max(price_counts.keys())
 
+            price_type = "possibility"
+            if len(island.model_group) == 1:
+                price_type = "range"
+            if len(price_counts) == 1:
+                price_type = "fixed"
+
             top_prices = current_stat.get("top_prices", [])
-            top_prices.append((max_price, island.name))
+            top_prices.append((max_price, island.name, price_type))
             current_stat["top_prices"] = sorted(top_prices, reverse=True)
 
             stats[time] = current_stat
@@ -77,8 +83,13 @@ def all_stats() -> str:
     msg = ["```", f"Time          {'Possible Prices'.ljust(longest_price_set)}  Top Three Islands"]
     for time, stat_bundle in stats.items():
         prices = str(stat_bundle['prices']).ljust(longest_price_set)
-        top_islands = " ".join(f"{datum[0]} ({datum[1]})" for datum in stat_bundle["top_prices"][:3])
-        msg.append(f"{str(time):12}  {prices}  {top_islands}")
+        top_islands = []
+        for datum in stat_bundle["top_prices"][:3]:
+            note = "*" if datum[2] == "fixed" else "†" if datum[2] == "possibility" else ""
+            top_islands.append(f"{datum[0]}{note} ({datum[1]})")
+        msg.append(f"{str(time):12}  {prices}  {' '.join(top_islands)}")
     msg.append("```")
+    msg.append("* number is exactly as reported on island")
+    msg.append("† number is possible on island, but pattern has not been confirmed")
 
     return "\n".join(msg)
