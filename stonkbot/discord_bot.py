@@ -15,7 +15,7 @@ logger = logging.getLogger("stonkbot")
 bot = commands.Bot(command_prefix="!turnip ")
 
 
-@bot.command()
+@bot.command(description="Log turnip prices", usage="<price> <time slot>")
 async def log(ctx: commands.Context, price: int, time: str) -> None:
     logger.info("%s logged %s for %s", ctx.author.name, price, time)
     try:
@@ -70,7 +70,7 @@ async def stats(ctx: commands.Context, target: Optional[str] = None):
     await ctx.send(msg)
 
 
-@bot.command()
+@bot.command(description="Update your island's name", usage="<new island name>")
 async def rename(ctx: commands.Context, *new_name: str) -> None:
     name = " ".join(new_name)
     logger.info("%s said their island was named %s", ctx.author.name, name)
