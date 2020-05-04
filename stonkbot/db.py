@@ -25,7 +25,8 @@ def log(key: str, price: int, time: TimePeriod) -> None:
     with shelve.open(SHELVE_FILE) as db:
         data = db.get(key)
         if not data:
-            data = WeekData(island=Island(name="[Unknown]", data=IslandModel(timeline={})))
+            default_name = f"Island {key[-3:]}"
+            data = WeekData(island=Island(name=default_name, data=IslandModel(timeline={})))
         data.set_price(price, time)
         db[key] = data
 
