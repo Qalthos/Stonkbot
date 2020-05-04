@@ -78,7 +78,7 @@ async def rename(ctx: commands.Context, *new_name: str) -> None:
     if db.rename(str(ctx.author.id), name):
         await react(ctx.message)
     else:
-        await ctx.send("I don't know about any island of yours.")
+        await ctx.send(f"I don't have any data for you to rename. Log some turnip prices with `{bot.command_prefix}log` first and then try again.")
 
 
 async def react(message: discord.Message, reaction: str = "👀") -> None:
