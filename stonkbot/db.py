@@ -83,17 +83,18 @@ def all_stats() -> str:
         longest_price_set = max(longest_price_set, len(str(stat["prices"])))
 
     msg = []
-    start = date.today().weekday() * 2
+    start = date.today().isoweekday() % 7 * 2
     if start != 0:
-        msg.extend(["Island forecasts for today:", "```"])
+        msg.extend([f"Island forecasts for {TimePeriod(start).name[:-3]}:", "```"])
         msg.append(f"AM: {top_islands(stats[TimePeriod(start).name]['top_prices'], 5)}")
         msg.append(f"PM: {top_islands(stats[TimePeriod(start + 1).name]['top_prices'], 5)}")
         msg.append("```")
 
     start += 2
 
+    msg.append("Predictions for the rest of the week:")
     msg.extend(["```", f"Time          {'Possible Prices'.ljust(longest_price_set)}  Top Three Islands"])
-    for i in range(start, 15):
+    for i in range(start, 14):
         time = TimePeriod(i).name
         stat_bundle = stats[time]
         prices = str(stat_bundle['prices']).ljust(longest_price_set)
@@ -105,10 +106,10 @@ def all_stats() -> str:
     return "\n".join(msg)
 
 
-def top_islands(top_prices, length=3):
+def top_islands(top_prices, length: int = 3) -> str:
     prices = []
     for datum in top_prices[:length]:
-        note = "*" if datum[2] == "fixed" else "†" if datum[2] == "possibility" else ""
+        note = "*" if datum[2] == "fixed" else "†" if datum[2] == "possibility" else " "
         name = f"({datum[1]})".ljust(12)
-        prices.append(f"{datum[0]: 3d}{note} {name}")
+        prices.append(f"{datum[0]:3d}{note} {name}")
     return ' '.join(prices)
