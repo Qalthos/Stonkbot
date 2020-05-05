@@ -149,8 +149,8 @@ class WeekData:
             probabilities[model_value] = count / expected_patterns[model_value] * expected_weights[model_value]
 
         pattern_str_list = [
-            f"{factor / sum(probabilities) * 100}% likely to be {ModelEnum(i).name}"
-            for i, factor in enumerate(probabilities)
+            f"{factor / sum(probabilities) * 100:.1f}% likely to be {ModelEnum(i).name}"
+            for i, factor in enumerate(probabilities) if factor > 0
         ]
         pattern_str_list[-1] = f"and {pattern_str_list[-1]}"
         if len(patterns) == 2:
