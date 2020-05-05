@@ -71,11 +71,10 @@ class WeekData:
         fixed_points = {}
         speculations = {}
         price_width = 0
-        likely_width = 0
         last_fixed = "Sunday_PM"
         for time, price_counts in model_group.histogram().items():
             if len(price_counts) == 1:
-                fixed_points[time] = next(iter(price_counts.keys()))
+                fixed_points[time] = list(price_counts.keys())[0]
                 last_fixed = time
                 continue
 
@@ -86,21 +85,6 @@ class WeekData:
                 price_set.add(price)
             stats["all"] = str(price_set)
             price_width = max(price_width, len(str(price_set)))
-
-            # Determine likeliest price(s)
-            n_possibilities = sum(price_counts.values())
-            likeliest = max(price_counts.items(), key=lambda x: x[1])
-            likelies = list(filter(lambda x: x[1] >= likeliest[1], price_counts.items()))
-
-            sample_size = len(likelies) * likeliest[1]
-            pct = 100 * (sample_size / n_possibilities)
-            stats["chance"] = pct
-
-            likely_set = RangeSet()
-            for likely in likelies:
-                likely_set.add(likely[0])
-            stats["likely"] = str(likely_set)
-            likely_width = max(likely_width, len(str(likely_set)))
 
             speculations[time] = stats
 
