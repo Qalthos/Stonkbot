@@ -1,3 +1,4 @@
+from datetime import date
 import shelve
 from typing import Dict
 
@@ -81,16 +82,33 @@ def all_stats() -> str:
     for stat in stats.values():
         longest_price_set = max(longest_price_set, len(str(stat["prices"])))
 
-    msg = ["```", f"Time          {'Possible Prices'.ljust(longest_price_set)}  Top Three Islands"]
-    for time, stat_bundle in stats.items():
+    msg = []
+    start = date.today().weekday() * 2
+    if start != 0:
+        msg.extend(["Island forecasts for today:", "```"])
+        msg.append(f"AM: {top_islands(stats[TimePeriod(start).name]['top_prices'], 5)}")
+        msg.append(f"PM: {top_islands(stats[TimePeriod(start + 1).name]['top_prices'], 5)}")
+        msg.append("```")
+
+    start += 2
+
+    msg.extend(["```", f"Time          {'Possible Prices'.ljust(longest_price_set)}  Top Three Islands"])
+    for i in range(start, 15):
+        time = TimePeriod(i).name
+        stat_bundle = stats[time]
         prices = str(stat_bundle['prices']).ljust(longest_price_set)
-        top_islands = []
-        for datum in stat_bundle["top_prices"][:3]:
-            note = "*" if datum[2] == "fixed" else "†" if datum[2] == "possibility" else ""
-            top_islands.append(f"{datum[0]}{note} ({datum[1]})")
-        msg.append(f"{str(time):12}  {prices}  {' '.join(top_islands)}")
+        msg.append(f"{time:12}  {prices}  {top_islands(stat_bundle['top_prices'])}")
     msg.append("```")
     msg.append("* number is exactly as reported on island")
     msg.append("† number is possible on island, but pattern has not been confirmed")
 
     return "\n".join(msg)
+
+
+def top_islands(top_prices, length=3):
+    prices = []
+    for datum in top_prices[:length]:
+        note = "*" if datum[2] == "fixed" else "†" if datum[2] == "possibility" else ""
+        name = f"({datum[1]})".ljust(12)
+        prices.append(f"{datum[0]: 3d}{note} {name}")
+    return ' '.join(prices)
