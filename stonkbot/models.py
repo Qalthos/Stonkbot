@@ -103,21 +103,7 @@ class WeekData:
             yield "|".join(values)
             yield "```"
 
-        model_count = Counter(model.model_name for model in model_group.models)
-        patterns = model_count.most_common()
-        pattern_str_list = [f"{count} {'are' if count > 1 else 'is'} {name}" for name, count in patterns]
-        if len(patterns) == 0:
-            yield "Uh oh! Your prices don't match any pattern I know about"
-        elif len(patterns) == 1:
-            pattern = patterns[0][0]
-            if pattern == "decay":
-                pattern += ". Better luck next week"
-            yield f"Your pattern is {pattern}."
-        elif len(patterns) == 2:
-            yield f"Out of {len(model_group)} possible patterns, {' and '.join(pattern_str_list)}."
-        else:
-            pattern_str_list[-1] = f"and {pattern_str_list[-1]}"
-            yield f"Out of {len(model_group)} possible patterns, {', '.join(pattern_str_list)}."
+        yield self.predictions()
 
         if TimePeriod[last_fixed] != TimePeriod.Saturday_PM:
             yield "```"
@@ -129,6 +115,47 @@ class WeekData:
 
             yield "```"
             yield f"For more detail, check <{self.prophet_link}>"
+
+    def predictions(self) -> str:
+        model_group = self.island.model_group
+        model_count = Counter(model.model_name for model in model_group.models)
+        patterns = model_count.most_common()
+
+        if len(patterns) == 0:
+            return "Uh oh! Your prices don't match any pattern I know about"
+        if len(patterns) == 1:
+            pattern = patterns[0][0]
+            if pattern == "decay":
+                pattern += ". Better luck next week"
+            return f"Your pattern is {pattern}."
+        if self.island.previous_week == ModelEnum.unknown:
+            pattern_str_list = [f"{count} {'are' if count > 1 else 'is'} {name}" for name, count in patterns]
+            pattern_str_list[-1] = f"and {pattern_str_list[-1]}"
+            if len(patterns) == 2:
+                return f"Out of {len(model_group)} possible patterns, {' '.join(pattern_str_list)}."
+            return f"Out of {len(model_group)} possible patterns, {', '.join(pattern_str_list)}."
+
+        weights = [
+            [20, 30, 15, 35],
+            [50, 5, 20, 25],
+            [25, 45, 5, 25],
+            [45, 25, 15, 15],
+        ]
+        expected_patterns = [56, 7, 1, 8]
+        expected_weights = weights[self.island.previous_week.value]
+        probabilities = [0, 0, 0, 0]
+        for pattern_name, count in patterns:
+            model_value = ModelEnum[pattern_name].value
+            probabilities[model_value] = count / expected_patterns[model_value] * expected_weights[model_value]
+
+        pattern_str_list = [
+            f"{factor / sum(probabilities) * 100}% likely to be {ModelEnum(i).name}"
+            for i, factor in enumerate(probabilities)
+        ]
+        pattern_str_list[-1] = f"and {pattern_str_list[-1]}"
+        if len(patterns) == 2:
+            return f"Your pattern is {' '.join(pattern_str_list)}."
+        return f"Your pattern is {', '.join(pattern_str_list)}."
 
     @property
     def data(self):
