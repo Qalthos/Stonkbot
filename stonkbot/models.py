@@ -28,7 +28,7 @@ class Record:
 
     @classmethod
     def load(cls, data):
-        return cls(price=data["price"], date=data["date"].fromisoformat(), is_am=data["is_am"])
+        return cls(price=data["price"], date=date.fromisoformat(data["date"]), is_am=data["is_am"])
 
 
 @dataclass
