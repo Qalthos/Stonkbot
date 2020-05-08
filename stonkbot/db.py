@@ -1,4 +1,4 @@
-from datetime import date, tzinfo
+from datetime import date
 import shelve
 from typing import Dict
 
@@ -32,14 +32,16 @@ def log(key: str, price: int, time: TimePeriod) -> None:
         db[key] = data
 
 
-def set_timezone(key: str, zone: tzinfo) -> None:
+def set_timezone(key: str, zone_name: str) -> bool:
+    success = False
     with shelve.open(SHELVE_FILE) as db:
         data = db.get(key)
         if not data:
             default_name = f"Island {key[-3:]}"
             data = WeekData(island=Island(name=default_name, data=IslandModel(timeline={})))
-        data.timezone = zone
+        success = data.set_tz(zone_name)
         db[key] = data
+    return success
 
 
 def meta_stats() -> str:

@@ -38,7 +38,7 @@ class WeekData:
     island: Island
     updated: datetime = datetime(2020, 3, 20)
     record: Record = Record(0, date.min, False)
-    timezone: Optional[tzinfo] = None
+    timezone: Optional[str] = None
 
     def set_price(self, price: int, time: TimePeriod):
         if not self.is_current_week:
@@ -63,6 +63,12 @@ class WeekData:
             self.data.previous_week = model_counter.most_common()[0][0]
         else:
             self.data.previous_week = ModelEnum.unknown
+
+    def set_tz(self, zone_name: str) -> bool:
+        if tz.gettz(zone_name):
+            self.timezone = zone_name
+            return True
+        return False
 
     def rename(self, new_name):
         self.island._name = new_name
@@ -165,6 +171,10 @@ class WeekData:
         return self.island._data
 
     @property
+    def get_tz(self):
+        return tz.gettz(self.timezone)
+
+    @property
     def is_current_week(self):
         now = datetime.now()
         sunday = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=now.isoweekday() % 7)
@@ -199,15 +209,15 @@ class WeekData:
             "prices": {k.name: v for k, v in self.data.timeline.items()},
             "last_week": self.island.previous_week.name,
             "record": self.record.dump(),
-            "timezone": self.timezone.tzname(),
+            "timezone": self.timezone,
         }
 
     @classmethod
     def load(cls, data):
         timeline = {TimePeriod[k]: v for k, v in data["prices"].items()}
         island = Island(name=data["island_name"], data=IslandModel(timeline=timeline))
+        updated = datetime.fromisoformat(data["updated"])
         record = Record.load(data["record"])
-        timezone = tz.gettz(data["timezone"])
-        instance = cls(island=island, updated=datetime.fromisoformat(data["updated"]), record=record, timezone=timezone)
+        instance = cls(island=island, updated=updated, record=record, timezone=data["timezone"])
         instance.data.previous_week = ModelEnum[data["last_week"]]
         return instance

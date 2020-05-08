@@ -2,7 +2,6 @@ import logging
 import random
 from typing import Optional
 
-from dateutil import tz
 import discord
 from discord.ext import commands
 from turnips.ttime import TimePeriod
@@ -81,15 +80,13 @@ async def stats(ctx: commands.Context, target: Optional[str] = None) -> None:
 
 
 @bot.command()
-async def timezone(ctx: commands.Context, zone: str) -> None:
-    logger.info("%s set their timezone to %s", ctx.author.name, zone)
-    zone_info = tz.gettz(zone)
-    if not zone_info:
-        await ctx.send(f"No timezone named {zone} was found.")
+async def timezone(ctx: commands.Context, zone_name: str) -> None:
+    logger.info("%s set their timezone to %s", ctx.author.name, zone_name)
+    if not db.set_timezone(str(ctx.author.id), zone_name):
+        await ctx.send(f"No timezone named {zone_name} was found.")
         return
 
-    db.set_timezone(str(ctx.author.id), zone_info)
-    await react(ctx, "⌚")
+    await react(ctx.message, "⌚")
 
 
 async def react(message: discord.Message, reaction: str = "👀") -> None:
