@@ -2,6 +2,7 @@ import logging
 import random
 from typing import Optional
 
+from dateutil import tz
 import discord
 from discord.ext import commands
 from turnips.ttime import TimePeriod
@@ -49,13 +50,22 @@ async def log(ctx: commands.Context, price: int, time: str) -> None:
         await react(ctx.message)
 
 
+@bot.command(description="Update your island's name", usage="<new island name>")
+async def rename(ctx: commands.Context, *new_name: str) -> None:
+    name = " ".join(new_name)
+    logger.info("%s said their island was named %s", ctx.author.name, name)
+
+    db.rename(str(ctx.author.id), name)
+    await react(ctx.message)
+
+
 @bot.command()
 async def source(ctx: commands.Context) -> None:
     await ctx.send("I live at https://github.com/Qalthos/Stonkbot")
 
 
 @bot.command()
-async def stats(ctx: commands.Context, target: Optional[str] = None):
+async def stats(ctx: commands.Context, target: Optional[str] = None) -> None:
     logger.info("%s asked for stats", ctx.author.name)
     if target is None:
         msg = db.user_stats(str(ctx.author.id))
@@ -70,15 +80,16 @@ async def stats(ctx: commands.Context, target: Optional[str] = None):
     await ctx.send(msg)
 
 
-@bot.command(description="Update your island's name", usage="<new island name>")
-async def rename(ctx: commands.Context, *new_name: str) -> None:
-    name = " ".join(new_name)
-    logger.info("%s said their island was named %s", ctx.author.name, name)
+@bot.command()
+async def timezone(ctx: commands.Context, zone: str) -> None:
+    logger.info("%s set their timezone to %s", ctx.author.name, zone)
+    zone_info = tz.gettz(zone)
+    if not zone_info:
+        await ctx.send(f"No timezone named {zone} was found.")
+        return
 
-    if db.rename(str(ctx.author.id), name):
-        await react(ctx.message)
-    else:
-        await ctx.send(f"I don't have any data for you to rename. Log some turnip prices with `{bot.command_prefix}log` first and then try again.")
+    db.set_timezone(str(ctx.author.id), zone_info)
+    await react(ctx, "⌚")
 
 
 async def react(message: discord.Message, reaction: str = "👀") -> None:

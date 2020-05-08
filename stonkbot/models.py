@@ -1,7 +1,9 @@
 from collections import Counter
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, tzinfo
+from typing import Iterable, Optional
 
+from dateutil import tz
 from turnips.archipelago import Island, IslandModel
 from turnips.ttime import TimePeriod
 from turnips.model import ModelEnum
@@ -36,6 +38,7 @@ class WeekData:
     island: Island
     updated: datetime = datetime(2020, 3, 20)
     record: Record = Record(0, date.min, False)
+    timezone: Optional[tzinfo] = None
 
     def set_price(self, price: int, time: TimePeriod):
         if not self.is_current_week:
@@ -196,6 +199,7 @@ class WeekData:
             "prices": {k.name: v for k, v in self.data.timeline.items()},
             "last_week": self.island.previous_week.name,
             "record": self.record.dump(),
+            "timezone": self.timezone.tzname(),
         }
 
     @classmethod
@@ -203,6 +207,7 @@ class WeekData:
         timeline = {TimePeriod[k]: v for k, v in data["prices"].items()}
         island = Island(name=data["island_name"], data=IslandModel(timeline=timeline))
         record = Record.load(data["record"])
-        instance = cls(island=island, updated=datetime.fromisoformat(data["updated"]), record=record)
+        timezone = tz.gettz(data["timezone"])
+        instance = cls(island=island, updated=datetime.fromisoformat(data["updated"]), record=record, timezone=timezone)
         instance.data.previous_week = ModelEnum[data["last_week"]]
         return instance

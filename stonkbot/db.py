@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, tzinfo
 import shelve
 from typing import Dict
 
@@ -12,14 +12,14 @@ from stonkbot.models import WeekData
 SHELVE_FILE = "turnips.db"
 
 
-def rename(key: str, island_name: str) -> bool:
+def rename(key: str, island_name: str) -> None:
     with shelve.open(SHELVE_FILE) as db:
         data = db.get(key)
         if not data:
-            return False
+            default_name = f"Island {key[-3:]}"
+            data = WeekData(island=Island(name=default_name, data=IslandModel(timeline={})))
         data.rename(island_name)
         db[key] = data
-    return True
 
 
 def log(key: str, price: int, time: TimePeriod) -> None:
@@ -29,6 +29,16 @@ def log(key: str, price: int, time: TimePeriod) -> None:
             default_name = f"Island {key[-3:]}"
             data = WeekData(island=Island(name=default_name, data=IslandModel(timeline={})))
         data.set_price(price, time)
+        db[key] = data
+
+
+def set_timezone(key: str, zone: tzinfo) -> None:
+    with shelve.open(SHELVE_FILE) as db:
+        data = db.get(key)
+        if not data:
+            default_name = f"Island {key[-3:]}"
+            data = WeekData(island=Island(name=default_name, data=IslandModel(timeline={})))
+        data.timezone = zone
         db[key] = data
 
 
