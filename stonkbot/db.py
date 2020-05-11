@@ -1,6 +1,6 @@
-from datetime import date
+from datetime import date, datetime
 import shelve
-from typing import Dict
+from typing import Dict, Optional
 
 from turnips.archipelago import Island, IslandModel
 from turnips.multi import RangeSet
@@ -22,14 +22,47 @@ def rename(key: str, island_name: str) -> None:
         db[key] = data
 
 
-def log(key: str, price: int, time: TimePeriod) -> None:
+def log(key: str, price: int, time: Optional[str] = None) -> str:
+    if time:
+        try:
+            time = TimePeriod.normalize(time)
+        except KeyError:
+            return f"{time} is not a valid time period. Try 'Monday_PM' or 'Friday_AM'."
+
     with shelve.open(SHELVE_FILE) as db:
         data = db.get(key)
         if not data:
             default_name = f"Island {key[-3:]}"
             data = WeekData(island=Island(name=default_name, data=IslandModel(timeline={})))
+        if not time:
+            if not data.timezone:
+                return (
+                    "Cannot infer time period without knowing your time zone. "
+                    "Try `!turnip timezone [time zone]` (e.g., America/New_York) and try again, "
+                    f"or specify time period with `!turnip log {price} [Monday_AM]` or similar."
+                )
+            now = datetime.now(tz=data.get_tz())
+            weekday = now.isoweekday() % 7
+            if now.hour < 8:
+                return (
+                    "This is way too early to log a price. If you meant to log a price for another "
+                    f"day, try `!turnip log {price} [time period]` instead."
+                )
+            if weekday == 0 and now.hour >= 12:
+                return (
+                    "Daisy Mae has already left your island. If you still want to log Sunday "
+                    f"prices, use `!turnip log {price} Sunday_AM` instead."
+                )
+            if now.hour >= 22:
+                return (
+                    "Nook's Cranny is closed for the day, but if you want to log past prices, "
+                    "use `!turnip log {price} [time period]` instead."
+                )
+            time = TimePeriod(weekday * 2 + (0 if now.hour < 12 else 1))
         data.set_price(price, time)
         db[key] = data
+
+    return ""
 
 
 def set_timezone(key: str, zone_name: str) -> bool:

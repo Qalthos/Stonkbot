@@ -16,15 +16,13 @@ bot = commands.Bot(command_prefix="!turnip ")
 
 
 @bot.command(description="Log turnip prices", usage="<price> <time slot>")
-async def log(ctx: commands.Context, price: int, time: str) -> None:
+async def log(ctx: commands.Context, price: int, time: Optional[str] = None) -> None:
     logger.info("%s logged %s for %s", ctx.author.name, price, time)
-    try:
-        time = TimePeriod.normalize(time)
-    except KeyError:
-        await ctx.send(f"{time} is not a valid time period. Try 'Monday_PM' or 'Friday_AM'.")
-        return
 
-    db.log(str(ctx.author.id), price, time)
+    error = db.log(str(ctx.author.id), price, time)
+    if error:
+        await ctx.send(error)
+        return
 
     if price == random.randint(10, 660):
         await ctx.send("That's Numberwang!")
