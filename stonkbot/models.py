@@ -1,7 +1,7 @@
 from collections import Counter
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, tzinfo
-from typing import Iterable, Optional
+from typing import Dict, Iterable, Optional
 
 from dateutil import tz
 from turnips.archipelago import Island, IslandModel
@@ -77,25 +77,24 @@ class WeekData:
         yield f"Here's what I know about {self.island.name}:"
         model_group = self.island.model_group
 
-        fixed_points = {}
-        speculations = {}
-        price_width = 0
-        last_fixed = None
+        fixed_points: Dict[str, int] = {}
+        speculations: Dict[str, str] = {}
+        last_fixed: Optional[str] = None
+        buy_price = self.data.timeline.get(TimePeriod.Sunday_AM)
+        if buy_price:
+            fixed_points["Sunday_AM"] = buy_price
+            last_fixed = "Sunday_AM"
         for time, price_counts in model_group.histogram().items():
             if len(price_counts) == 1:
                 fixed_points[time] = list(price_counts.keys())[0]
                 last_fixed = time
                 continue
 
-            stats = {}
             # Gather possible prices
             price_set = RangeSet()
             for price in price_counts.keys():
                 price_set.add(price)
-            stats["all"] = str(price_set)
-            price_width = max(price_width, len(str(price_set)))
-
-            speculations[time] = stats
+            speculations[time] = str(price_set)
 
         if last_fixed:
             days = ["Buy"]
@@ -114,13 +113,14 @@ class WeekData:
 
         yield self.predictions()
 
-        if TimePeriod[last_fixed] != TimePeriod.Saturday_PM:
+        if last_fixed != "Saturday_PM":
+            price_width = max((len(stat) for stat in speculations.values()))
             yield "```"
             yield f"Time          {'Price'.ljust(price_width)}"
             for i in range(TimePeriod[last_fixed].value + 1, 14):
                 time = TimePeriod(i).name
                 stats = speculations[time]
-                yield f"{time:12}  {stats['all']:{price_width}}"
+                yield f"{time:12}  {stats:{price_width}}"
 
             yield "```"
             yield f"For more detail, check <{self.prophet_link}>"
