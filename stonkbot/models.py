@@ -209,7 +209,7 @@ class WeekData:
             "prices": {k.name: v for k, v in self.data.timeline.items()},
             "last_week": self.island.previous_week.name,
             "record": self.record.dump(),
-            "timezone": self.timezone,
+            "timezone": self.tz_name,
         }
 
     @classmethod
@@ -218,6 +218,6 @@ class WeekData:
         island = Island(name=data["island_name"], data=IslandModel(timeline=timeline))
         updated = datetime.fromisoformat(data["updated"])
         record = Record.load(data["record"])
-        instance = cls(island=island, updated=updated, record=record, timezone=data["timezone"])
+        instance = cls(island=island, updated=updated, record=record, tz_name=data["timezone"])
         instance.data.previous_week = ModelEnum[data["last_week"]]
         return instance
