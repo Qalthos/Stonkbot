@@ -41,7 +41,7 @@ def log(key: str, price: int, time: Optional[str] = None) -> str:
                     "Try `!turnip timezone [time zone]` (e.g., America/New_York) and try again, "
                     f"or specify time period with `!turnip log {price} [Monday_AM]` or similar."
                 )
-            now = datetime.now(tz=data.get_tz())
+            now = datetime.now(tz=data.timezone)
             weekday = now.isoweekday() % 7
             if now.hour < 8:
                 return (

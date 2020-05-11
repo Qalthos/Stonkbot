@@ -38,7 +38,7 @@ class WeekData:
     island: Island
     updated: datetime = datetime(2020, 3, 20)
     record: Record = Record(0, date.min, False)
-    timezone: Optional[str] = None
+    tz_name: Optional[str] = None
 
     def set_price(self, price: int, time: TimePeriod):
         if not self.is_current_week:
@@ -66,7 +66,7 @@ class WeekData:
 
     def set_tz(self, zone_name: str) -> bool:
         if tz.gettz(zone_name):
-            self.timezone = zone_name
+            self.tz_name = zone_name
             return True
         return False
 
@@ -171,24 +171,24 @@ class WeekData:
         return self.island._data
 
     @property
-    def get_tz(self):
-        return tz.gettz(self.timezone)
+    def timezone(self):
+        return tz.gettz(self.tz_name)
 
     @property
-    def is_current_week(self):
+    def is_current_week(self) -> bool:
         now = datetime.now()
         sunday = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=now.isoweekday() % 7)
         return self.updated > sunday
 
     @property
-    def is_last_week(self):
+    def is_last_week(self) -> bool:
         midnight = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
         sunday = midnight - timedelta(days=midnight.isoweekday() % 7)
         last_sunday = midnight - timedelta(days=(midnight.isoweekday() % 7) + 7)
         return sunday > self.updated > last_sunday
 
     @property
-    def prophet_link(self):
+    def prophet_link(self) -> str:
         url = "https://turnipprophet.io/?prices={prices}&pattern={pattern}"
         pattern_map = {
             ModelEnum.triple: 0,
@@ -202,7 +202,7 @@ class WeekData:
         return url.format(prices=".".join(prices), pattern=pattern_map[self.island.previous_week])
 
     # Migration methods
-    def dump(self):
+    def dump(self) -> dict:
         return {
             "island_name": self.island.name,
             "updated": self.updated.isoformat(),
