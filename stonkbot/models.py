@@ -38,7 +38,7 @@ class WeekData:
     island: Island
     updated: datetime = datetime(2020, 3, 20)
     record: Record = Record(0, date.min, False)
-    tz_name: Optional[str] = None
+    tz_name: str = ""
 
     def set_price(self, price: int, time: TimePeriod):
         if not self.is_current_week:
@@ -53,7 +53,7 @@ class WeekData:
         elif time in self.data.timeline:
             del self.data.timeline[time]
         self.island.process()
-        self.updated = datetime.now()
+        self.updated = datetime.now(tz=self.timezone)
 
     def set_previous_week(self):
         model_group = self.island.model_group
@@ -67,6 +67,7 @@ class WeekData:
     def set_tz(self, zone_name: str) -> bool:
         if tz.gettz(zone_name):
             self.tz_name = zone_name
+            self.updated.replace(tzinfo=self.timezone)
             return True
         return False
 
@@ -171,18 +172,18 @@ class WeekData:
         return self.island._data
 
     @property
-    def timezone(self):
+    def timezone(self) -> Optional[tzinfo]:
         return tz.gettz(self.tz_name)
 
     @property
     def is_current_week(self) -> bool:
-        now = datetime.now()
+        now = datetime.now(tz=self.timezone)
         sunday = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=now.isoweekday() % 7)
         return self.updated > sunday
 
     @property
     def is_last_week(self) -> bool:
-        midnight = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        midnight = datetime.now(tz=self.timezone).replace(hour=0, minute=0, second=0, microsecond=0)
         sunday = midnight - timedelta(days=midnight.isoweekday() % 7)
         last_sunday = midnight - timedelta(days=(midnight.isoweekday() % 7) + 7)
         return sunday > self.updated > last_sunday
