@@ -73,14 +73,14 @@ class WeekData:
     def rename(self, new_name):
         self.island._name = new_name
 
-    def summary(self):
+    def summary(self) -> Iterable[str]:
         yield f"Here's what I know about {self.island.name}:"
         model_group = self.island.model_group
 
         fixed_points = {}
         speculations = {}
         price_width = 0
-        last_fixed = "Sunday_PM"
+        last_fixed = None
         for time, price_counts in model_group.histogram().items():
             if len(price_counts) == 1:
                 fixed_points[time] = list(price_counts.keys())[0]
@@ -97,12 +97,12 @@ class WeekData:
 
             speculations[time] = stats
 
-        if TimePeriod[last_fixed] != TimePeriod.Sunday_PM:
-            days = []
-            values = []
+        if last_fixed:
+            days = ["Buy"]
+            values = [str(fixed_points.get(TimePeriod.Sunday_AM, "--")).center(3)]
             for i in range(2, TimePeriod[last_fixed].value + 1):
                 time = TimePeriod(i).name
-                price = str(fixed_points.get(time, '--'))
+                price = str(fixed_points.get(time, "--"))
                 values.append(price.center(4))
                 if i % 2 == 0:
                     days.append(time[:-3].center(9))
