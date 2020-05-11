@@ -99,7 +99,7 @@ class WeekData:
 
         if last_fixed:
             days = ["Buy"]
-            values = [str(fixed_points.get(TimePeriod.Sunday_AM, "--")).center(3)]
+            values = [str(fixed_points.get("Sunday_AM", "--")).center(3)]
             for i in range(2, TimePeriod[last_fixed].value + 1):
                 time = TimePeriod(i).name
                 price = str(fixed_points.get(time, "--"))
