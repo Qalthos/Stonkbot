@@ -189,6 +189,17 @@ class WeekData:
         return sunday > self.updated > last_sunday
 
     @property
+    def has_current_period(self) -> bool:
+        now = datetime.now(tz=self.timezone)
+        weekday = now.isoweekday() % 7
+        time_index = (weekday * 2) + int(now.hour >= 12)
+
+        # Don't bother looking for Sunday_PM
+        if time_index == 1:
+            time_index = 0
+        return TimePeriod(time_index) in self.data.timeline
+
+    @property
     def prophet_link(self) -> str:
         url = "https://turnipprophet.io/?prices={prices}&pattern={pattern}"
         pattern_map = {

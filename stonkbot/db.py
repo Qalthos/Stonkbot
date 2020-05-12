@@ -78,13 +78,18 @@ def set_timezone(key: str, zone_name: str) -> bool:
 
 
 def meta_stats() -> str:
-    islands = 0
+    total = 0
+    this_week = 0
     current = 0
     with shelve.open(SHELVE_FILE, flag="r") as db:
-        islands = len(db.keys())
-        current = len([v for v in db.values() if v.is_current_week])
+        for island in db.values():
+            total += 1
+            if island.is_current_week:
+                this_week += 1
+            if island.has_current_period:
+                current += 1
 
-    return f"I know about {islands} islands, of which I have current data for {current} of them."
+    return f"I know about {total} islands, of which {this_week} have data from this week and {current} have data for right now."
 
 
 def user_stats(key: str) -> str:
