@@ -1,12 +1,14 @@
-from datetime import date, datetime
+from datetime import date
 import shelve
 from typing import Dict, Optional
 
+from discord.ext import commands
 from turnips.archipelago import Island, IslandModel
 from turnips.multi import RangeSet
 from turnips.ttime import TimePeriod
 
 from stonkbot.models import WeekData
+from stonkbot import utils
 
 
 SHELVE_FILE = "turnips.db"
@@ -22,13 +24,14 @@ def rename(key: str, island_name: str) -> None:
         db[key] = data
 
 
-def log(key: str, price: int, time: Optional[str] = None) -> str:
+def log(ctx: commands.Context, price: int, time: Optional[str] = None) -> str:
     if time:
         try:
             time = TimePeriod.normalize(time)
         except KeyError:
             return f"{time} is not a valid time period. Try 'Monday_PM' or 'Friday_AM'."
 
+    key = str(ctx.author.id)
     with shelve.open(SHELVE_FILE) as db:
         data = db.get(key)
         if not data:
@@ -41,24 +44,11 @@ def log(key: str, price: int, time: Optional[str] = None) -> str:
                     "Try `!turnip timezone [time zone]` (e.g., America/New_York) and try again, "
                     f"or specify time period with `!turnip log {price} [Monday_AM]` or similar."
                 )
-            now = datetime.now(tz=data.timezone)
-            weekday = now.isoweekday() % 7
-            if now.hour < 8:
-                return (
-                    "This is way too early to log a price. If you meant to log a price for another "
-                    f"day, try `!turnip log {price} [time period]` instead."
-                )
-            if weekday == 0 and now.hour >= 12:
-                return (
-                    "Daisy Mae has already left your island. If you still want to log Sunday "
-                    f"prices, use `!turnip log {price} Sunday_AM` instead."
-                )
-            if now.hour >= 22:
-                return (
-                    "Nook's Cranny is closed for the day, but if you want to log past prices, "
-                    "use `!turnip log {price} [time period]` instead."
-                )
-            time = TimePeriod(weekday * 2 + (0 if now.hour < 12 else 1))
+            ts = ctx.message.created_at.replace(tzinfo=data.timezone)
+            try:
+                time = utils.datetime_to_timeperiod(ts)
+            except ValueError as exc:
+                return str(exc).format(price=price)
         data.set_price(price, time)
         db[key] = data
 

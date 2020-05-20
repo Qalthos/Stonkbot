@@ -19,7 +19,7 @@ bot = commands.Bot(command_prefix="!turnip ")
 async def log(ctx: commands.Context, price: int, time: Optional[str] = None) -> None:
     logger.info("%s logged %s for %s", ctx.author.name, price, time)
 
-    error = db.log(str(ctx.author.id), price, time)
+    error = db.log(ctx, price, time)
     if error:
         await ctx.send(error)
         return
