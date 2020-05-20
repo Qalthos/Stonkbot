@@ -1,6 +1,6 @@
 from datetime import date
 import shelve
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 from discord.ext import commands
 from turnips.archipelago import Island, IslandModel
@@ -95,6 +95,34 @@ def all_stats() -> str:
             if week_data.is_current_week:
                 islands.append(week_data.island)
 
+    stats = _islands_to_stats(islands)
+
+    msg = []
+    start = date.today().isoweekday() % 7 * 2
+    if start != 0:
+        msg.extend([f"Island forecasts for {TimePeriod(start).name[:-3]}:", "```"])
+        msg.append(f"AM: {_top_islands(stats[TimePeriod(start).name]['top_prices'], 5)}")
+        msg.append(f"PM: {_top_islands(stats[TimePeriod(start + 1).name]['top_prices'], 5)}")
+        msg.append("```")
+
+    start += 2
+
+    longest_price_set = max(15, *(len(str(stat["prices"])) for stat in stats.values()))
+    msg.append("Predictions for the rest of the week:")
+    msg.extend(["```", f"Time          {'Possible Prices'.ljust(longest_price_set)}  Top Three Islands"])
+    for i in range(start, 14):
+        time = TimePeriod(i).name
+        stat_bundle = stats[time]
+        prices = str(stat_bundle['prices']).ljust(longest_price_set)
+        msg.append(f"{time:12}  {prices}  {_top_islands(stat_bundle['top_prices'])}")
+    msg.append("```")
+    msg.append("* number is exactly as reported on island")
+    msg.append("† number is possible on island, but pattern has not been confirmed")
+
+    return "\n".join(msg)
+
+
+def _islands_to_stats(islands: List[Island]) -> Dict[str, Dict]:
     stats: Dict[str, Dict] = {}
     for island in islands:
         for time, price_counts in island.model_group.histogram().items():
@@ -118,35 +146,10 @@ def all_stats() -> str:
 
             stats[time] = current_stat
 
-    longest_price_set = 15
-    for stat in stats.values():
-        longest_price_set = max(longest_price_set, len(str(stat["prices"])))
-
-    msg = []
-    start = date.today().isoweekday() % 7 * 2
-    if start != 0:
-        msg.extend([f"Island forecasts for {TimePeriod(start).name[:-3]}:", "```"])
-        msg.append(f"AM: {top_islands(stats[TimePeriod(start).name]['top_prices'], 5)}")
-        msg.append(f"PM: {top_islands(stats[TimePeriod(start + 1).name]['top_prices'], 5)}")
-        msg.append("```")
-
-    start += 2
-
-    msg.append("Predictions for the rest of the week:")
-    msg.extend(["```", f"Time          {'Possible Prices'.ljust(longest_price_set)}  Top Three Islands"])
-    for i in range(start, 14):
-        time = TimePeriod(i).name
-        stat_bundle = stats[time]
-        prices = str(stat_bundle['prices']).ljust(longest_price_set)
-        msg.append(f"{time:12}  {prices}  {top_islands(stat_bundle['top_prices'])}")
-    msg.append("```")
-    msg.append("* number is exactly as reported on island")
-    msg.append("† number is possible on island, but pattern has not been confirmed")
-
-    return "\n".join(msg)
+    return stats
 
 
-def top_islands(top_prices, length: int = 3) -> str:
+def _top_islands(top_prices, length: int = 3) -> str:
     prices = []
     for datum in top_prices[:length]:
         note = "*" if datum[2] == "fixed" else "†" if datum[2] == "possibility" else " "
