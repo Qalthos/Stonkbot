@@ -4,3 +4,4 @@ __pycache__
 disco_bot.log
 env
 turnips.db*
+.mypy_cache
