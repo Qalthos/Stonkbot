@@ -1,3 +1,4 @@
+from dataclasses import dataclass, field
 from datetime import date
 import shelve
 from typing import Dict, List, Optional
@@ -12,6 +13,27 @@ from stonkbot import utils
 
 
 SHELVE_FILE = "turnips.db"
+
+
+# Helper dataclasses
+@dataclass
+class StatBundle:
+    max_price: int
+    name: str
+    confidence: str
+
+
+@dataclass
+class PriceBundle:
+    prices: RangeSet = field(default_factory=RangeSet)
+    _top_prices: List[StatBundle] = field(default_factory=list)
+
+    def add_price(self, stats: StatBundle):
+        self._top_prices.append(stats)
+
+    @property
+    def top_prices(self) -> List[StatBundle]:
+        return list(sorted(self._top_prices, reverse=True))
 
 
 def rename(key: str, island_name: str) -> None:
@@ -101,20 +123,20 @@ def all_stats() -> str:
     start = date.today().isoweekday() % 7 * 2
     if start != 0:
         msg.extend([f"Island forecasts for {TimePeriod(start).name[:-3]}:", "```"])
-        msg.append(f"AM: {_top_islands(stats[TimePeriod(start).name]['top_prices'], 5)}")
-        msg.append(f"PM: {_top_islands(stats[TimePeriod(start + 1).name]['top_prices'], 5)}")
+        msg.append(f"AM: {_top_islands(stats[TimePeriod(start).name].top_prices, 5)}")
+        msg.append(f"PM: {_top_islands(stats[TimePeriod(start + 1).name].top_prices, 5)}")
         msg.append("```")
 
     start += 2
 
-    longest_price_set = max(15, *(len(str(stat["prices"])) for stat in stats.values()))
+    longest_price_set = max(15, *(len(str(stat.prices)) for stat in stats.values()))
     msg.append("Predictions for the rest of the week:")
     msg.extend(["```", f"Time          {'Possible Prices'.ljust(longest_price_set)}  Top Three Islands"])
     for i in range(start, 14):
         time = TimePeriod(i).name
         stat_bundle = stats[time]
-        prices = str(stat_bundle['prices']).ljust(longest_price_set)
-        msg.append(f"{time:12}  {prices}  {_top_islands(stat_bundle['top_prices'])}")
+        prices = str(stat_bundle.prices).ljust(longest_price_set)
+        msg.append(f"{time:12}  {prices}  {_top_islands(stat_bundle.top_prices)}")
     msg.append("```")
     msg.append("* number is exactly as reported on island")
     msg.append("† number is possible on island, but pattern has not been confirmed")
@@ -122,17 +144,15 @@ def all_stats() -> str:
     return "\n".join(msg)
 
 
-def _islands_to_stats(islands: List[Island]) -> Dict[str, Dict]:
-    stats: Dict[str, Dict] = {}
+def _islands_to_stats(islands: List[Island]) -> Dict[str, PriceBundle]:
+    stats: Dict[str, PriceBundle] = {}
     for island in islands:
         for time, price_counts in island.model_group.histogram().items():
-            current_stat = stats.get(time, {})
+            current_stat = stats.get(time, PriceBundle())
 
-            price_set = current_stat.get("prices", RangeSet())
-            for price in price_counts.keys():
-                price_set.add(price)
-            current_stat["prices"] = price_set
-            max_price = max(price_counts.keys())
+            for price in current_stat.prices.keys():
+                current_stat.prices.add(price)
+            max_price = max(current_stat.prices.keys())
 
             price_type = "possibility"
             if len(island.model_group) == 1:
@@ -140,19 +160,17 @@ def _islands_to_stats(islands: List[Island]) -> Dict[str, Dict]:
             if len(price_counts) == 1:
                 price_type = "fixed"
 
-            top_prices = current_stat.get("top_prices", [])
-            top_prices.append((max_price, island.name, price_type))
-            current_stat["top_prices"] = sorted(top_prices, reverse=True)
+            current_stat.add_price(StatBundle(max_price, name=island.name, confidence=price_type))
 
             stats[time] = current_stat
 
     return stats
 
 
-def _top_islands(top_prices, length: int = 3) -> str:
+def _top_islands(top_prices: List[StatBundle], length: int = 3) -> str:
     prices = []
-    for datum in top_prices[:length]:
-        note = "*" if datum[2] == "fixed" else "†" if datum[2] == "possibility" else " "
-        name = f"({datum[1]})".ljust(12)
-        prices.append(f"{datum[0]:3d}{note} {name}")
+    for stat in top_prices[:length]:
+        note = "*" if stat.confidence == "fixed" else "†" if stat.confidence == "possibility" else " "
+        name = f"({stat.name})".ljust(12)
+        prices.append(f"{stat.max_price:3d}{note} {name}")
     return ' '.join(prices)
