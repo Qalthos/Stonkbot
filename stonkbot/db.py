@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from datetime import date, timezone
 import logging
+import operator
 import shelve
 from typing import Dict, List, Optional
 
@@ -35,7 +36,7 @@ class PriceBundle:
 
     @property
     def top_prices(self) -> List[StatBundle]:
-        return list(sorted(self._top_prices, reverse=True))
+        return list(sorted(self._top_prices, key=operator.attrgetter("max_price"), reverse=True))
 
 
 def rename(key: str, island_name: str) -> None:
@@ -155,9 +156,9 @@ def _islands_to_stats(islands: List[Island]) -> Dict[str, PriceBundle]:
         for time, price_counts in island.model_group.histogram().items():
             current_stat = stats.get(time, PriceBundle())
 
-            for price in current_stat.prices.keys():
+            for price in price_counts.keys():
                 current_stat.prices.add(price)
-            max_price = max(current_stat.prices.keys())
+            max_price = max(price_counts.keys())
 
             price_type = "possibility"
             if len(island.model_group) == 1:
