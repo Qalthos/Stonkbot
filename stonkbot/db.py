@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, timezone
+import logging
 import shelve
 from typing import Dict, List, Optional
 
@@ -13,6 +14,7 @@ from stonkbot import utils
 
 
 SHELVE_FILE = "turnips.db"
+logger = logging.getLogger("stonkbot")
 
 
 # Helper dataclasses
@@ -66,9 +68,12 @@ def log(ctx: commands.Context, price: int, time: Optional[str] = None) -> str:
                     "Try `!turnip timezone [time zone]` (e.g., America/New_York) and try again, "
                     f"or specify time period with `!turnip log {price} [Monday_AM]` or similar."
                 )
-            ts = ctx.message.created_at.replace(tzinfo=data.timezone)
+            # Get message created time (which is UTC) and convert to user's local time
+            ts = ctx.message.created_at.replace(tzinfo=timezone.utc).astimezone(data.timezone)
+            logger.info("Computed local message time as %s", ts.isoformat())
             try:
                 time = utils.datetime_to_timeperiod(ts)
+                logger.info("Trunip time period is %s", time)
             except ValueError as exc:
                 return str(exc).format(price=price)
         data.set_price(price, time)
