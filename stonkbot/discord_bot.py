@@ -33,7 +33,9 @@ async def log(ctx: commands.Context, price: int, time: Optional[str] = None) -> 
         420: "🌿",
     }
 
-    if price in reaction_map:
+    if price == 0:
+        await ctx.send("Price cleared")
+    elif price in reaction_map:
         await react(ctx.message, reaction_map[price])
     elif price <= 10:
         for reaction in ("😭", "📉", "😰"):
