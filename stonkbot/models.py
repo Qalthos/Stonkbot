@@ -1,13 +1,14 @@
+from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, tzinfo
 from typing import Dict, Iterable, Optional
 
 from dateutil import tz
-from turnips.archipelago import Island, IslandModel
 from turnips.ttime import TimePeriod
 from turnips.model import ModelEnum
-from turnips.multi import RangeSet
+from turnips.meta import MetaModel
+from turnips.multi import RangeSet, MultiModel, BumpModels
 
 
 @dataclass
@@ -35,34 +36,38 @@ class Record:
 
 @dataclass
 class WeekData:
-    island: Island
+    name: str
+
+    timeline: Dict[TimePeriod, int]
+    _initial_week: bool = False
+    _previous_week: ModelEnum = ModelEnum.unknown
+
     updated: datetime = datetime(2020, 3, 20)
     record: Record = Record(0, date.min, False)
     tz_name: str = ""
 
-    def set_price(self, price: int, time: TimePeriod):
+    def set_price(self, price: int, time: TimePeriod) -> None:
         if not self.is_current_week:
             if self.is_last_week:
                 self.set_previous_week()
-            self.data.timeline = {}
+                self._initial_week = False
+            self.timeline = {}
 
         if price:
-            self.data.timeline[time] = price
+            self.timeline[time] = price
             if price > self.record.price:
                 self.record.set_price(price, time.value % 2 == 1)
-        elif time in self.data.timeline:
-            del self.data.timeline[time]
-        self.island.process()
+        elif time in self.timeline:
+            del self.timeline[time]
         self.updated = datetime.now(tz=self.timezone)
 
-    def set_previous_week(self):
-        model_group = self.island.model_group
-        model_counter = Counter(model.model_type for model in model_group.models)
+    def set_previous_week(self) -> None:
+        model_counter = Counter(model.model_type for model in self.models.models)
 
         if len(model_counter) == 1:
-            self.data.previous_week = model_counter.most_common()[0][0]
+            self._previous_week = model_counter.most_common()[0][0]
         else:
-            self.data.previous_week = ModelEnum.unknown
+            self._previous_week = ModelEnum.unknown
 
     def set_tz(self, zone_name: str) -> bool:
         if tz.gettz(zone_name):
@@ -71,21 +76,17 @@ class WeekData:
             return True
         return False
 
-    def rename(self, new_name):
-        self.island._name = new_name
-
     def summary(self) -> Iterable[str]:
-        yield f"Here's what I know about {self.island.name}:"
-        model_group = self.island.model_group
+        yield f"Here's what I know about {self.name}:"
 
         fixed_points: Dict[str, int] = {}
         speculations: Dict[str, str] = {}
         last_fixed: Optional[str] = None
-        buy_price = self.data.timeline.get(TimePeriod.Sunday_AM)
+        buy_price = self.timeline.get(TimePeriod.Sunday_AM)
         if buy_price:
             fixed_points["Sunday_AM"] = buy_price
             last_fixed = "Sunday_AM"
-        for time, price_counts in model_group.histogram().items():
+        for time, price_counts in self.models.histogram().items():
             if len(price_counts) == 1:
                 fixed_points[time] = list(price_counts.keys())[0]
                 last_fixed = time
@@ -127,8 +128,7 @@ class WeekData:
             yield f"For more detail, check <{self.prophet_link}>"
 
     def predictions(self) -> str:
-        model_group = self.island.model_group
-        model_count = Counter(model.model_name for model in model_group.models)
+        model_count = Counter(model.model_name for model in self.models.models)
         patterns = model_count.most_common()
 
         if len(patterns) == 0:
@@ -138,12 +138,12 @@ class WeekData:
             if pattern == "decay":
                 pattern += ". Better luck next week"
             return f"Your pattern is {pattern}."
-        if self.island.previous_week == ModelEnum.unknown:
+        if self._previous_week == ModelEnum.unknown:
             pattern_str_list = [f"{count} {'are' if count > 1 else 'is'} {name}" for name, count in patterns]
             pattern_str_list[-1] = f"and {pattern_str_list[-1]}"
             if len(patterns) == 2:
-                return f"Out of {len(model_group)} possible patterns, {' '.join(pattern_str_list)}."
-            return f"Out of {len(model_group)} possible patterns, {', '.join(pattern_str_list)}."
+                return f"Out of {len(self.models)} possible patterns, {' '.join(pattern_str_list)}."
+            return f"Out of {len(self.models)} possible patterns, {', '.join(pattern_str_list)}."
 
         weights = [
             [20, 30, 15, 35],
@@ -152,7 +152,7 @@ class WeekData:
             [45, 25, 15, 15],
         ]
         expected_patterns = [56, 7, 1, 8]
-        expected_weights = weights[self.island.previous_week.value]
+        expected_weights = weights[self._previous_week.value]
         probabilities = [0, 0, 0, 0]
         for pattern_name, count in patterns:
             model_value = ModelEnum[pattern_name].value
@@ -168,8 +168,20 @@ class WeekData:
         return f"Your pattern is {', '.join(pattern_str_list)}."
 
     @property
-    def data(self):
-        return self.island._data
+    def models(self) -> MultiModel:
+        base = self.timeline.get(TimePeriod.Sunday_AM)
+        if self._initial_week:
+            models = BumpModels()
+        else:
+            models = MetaModel.blank(base)
+
+        for time, price in self.timeline.items():
+            if price is None:
+                continue
+            if time.value < TimePeriod.Monday_AM.value:
+                continue
+            models.fix_price(time, price)
+        return models
 
     @property
     def timezone(self) -> Optional[tzinfo]:
@@ -197,7 +209,7 @@ class WeekData:
         # Don't bother looking for Sunday_PM
         if time_index == 1:
             time_index = 0
-        return TimePeriod(time_index) in self.data.timeline
+        return TimePeriod(time_index) in self.timeline
 
     @property
     def prophet_link(self) -> str:
@@ -209,27 +221,26 @@ class WeekData:
             ModelEnum.bump: 3,
             ModelEnum.unknown: 4,
         }
-        prices = [str(self.data.base_price or "")]
-        prices.extend((str(self.data.timeline.get(TimePeriod(i), "")) for i in range(2, 14)))
-        return url.format(prices=".".join(prices), pattern=pattern_map[self.island.previous_week])
+        prices = [str(self.timeline.get(TimePeriod.Sunday_AM, ""))]
+        prices.extend((str(self.timeline.get(TimePeriod(i), "")) for i in range(2, 14)))
+        return url.format(prices=".".join(prices), pattern=pattern_map[self._previous_week])
 
     # Migration methods
     def dump(self) -> dict:
         return {
-            "island_name": self.island.name,
+            "island_name": self.name,
             "updated": self.updated.isoformat(),
-            "prices": {k.name: v for k, v in self.data.timeline.items()},
-            "last_week": self.island.previous_week.name,
+            "prices": {k.name: v for k, v in self.timeline.items()},
+            "last_week": self._previous_week.name,
             "record": self.record.dump(),
             "timezone": self.tz_name,
         }
 
     @classmethod
-    def load(cls, data):
+    def load(cls, data) -> WeekData:
         timeline = {TimePeriod[k]: v for k, v in data["prices"].items()}
-        island = Island(name=data["island_name"], data=IslandModel(timeline=timeline))
+        previous_week = ModelEnum[data["last_week"]]
         updated = datetime.fromisoformat(data["updated"])
         record = Record.load(data["record"])
-        instance = cls(island=island, updated=updated, record=record, tz_name=data["timezone"])
-        instance.data.previous_week = ModelEnum[data["last_week"]]
+        instance = cls(name=data["island_name"], timeline=timeline, _previous_week=previous_week, updated=updated, record=record, tz_name=data["timezone"])
         return instance

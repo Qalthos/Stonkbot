@@ -6,7 +6,6 @@ import shelve
 from typing import Dict, List, Optional
 
 from discord.ext import commands
-from turnips.archipelago import Island, IslandModel
 from turnips.multi import RangeSet
 from turnips.ttime import TimePeriod
 
@@ -39,10 +38,10 @@ class PriceBundle:
         return list(sorted(self._top_prices, key=operator.attrgetter("max_price"), reverse=True))
 
 
-def _islands_to_stats(islands: List[Island]) -> Dict[str, PriceBundle]:
+def _islands_to_stats(islands: List[WeekData]) -> Dict[str, PriceBundle]:
     stats: Dict[str, PriceBundle] = {}
     for island in islands:
-        for time, price_counts in island.model_group.histogram().items():
+        for time, price_counts in island.models.histogram().items():
             current_stat = stats.get(time, PriceBundle())
 
             for price in price_counts.keys():
@@ -50,7 +49,7 @@ def _islands_to_stats(islands: List[Island]) -> Dict[str, PriceBundle]:
             max_price = max(price_counts.keys())
 
             price_type = "possibility"
-            if len(island.model_group) == 1:
+            if len(island.models) == 1:
                 price_type = "range"
             if len(price_counts) == 1:
                 price_type = "fixed"
@@ -132,9 +131,9 @@ def rename(key: str, island_name: str) -> None:
     with shelve.open(SHELVE_FILE) as shelf:
         data = shelf.get(key)
         if not data:
-            default_name = f"Island {key[-3:]}"
-            data = WeekData(island=Island(name=default_name, data=IslandModel(timeline={})))
-        data.rename(island_name)
+            data = WeekData(name=island_name, timeline={})
+        else:
+            data.name = island_name
         shelf[key] = data
 
 
@@ -150,7 +149,7 @@ def log(ctx: commands.Context, price: int, time: Optional[str] = None) -> str:
         data = shelf.get(key)
         if not data:
             default_name = f"Island {key[-3:]}"
-            data = WeekData(island=Island(name=default_name, data=IslandModel(timeline={})))
+            data = WeekData(name=default_name, timeline={})
         if not time:
             if not data.timezone:
                 return (
@@ -178,7 +177,7 @@ def set_timezone(key: str, zone_name: str) -> bool:
         data = shelf.get(key)
         if not data:
             default_name = f"Island {key[-3:]}"
-            data = WeekData(island=Island(name=default_name, data=IslandModel(timeline={})))
+            data = WeekData(name=default_name, timeline={})
         success = data.set_tz(zone_name)
         shelf[key] = data
     return success
