@@ -4,7 +4,6 @@ from typing import Optional
 
 import discord
 from discord.ext import commands
-from turnips.ttime import TimePeriod
 
 from stonkbot import db
 
