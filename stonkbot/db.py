@@ -76,8 +76,8 @@ def meta_stats() -> str:
     total = 0
     this_week = 0
     current = 0
-    with shelve.open(SHELVE_FILE, flag="r") as db:
-        for island in db.values():
+    with shelve.open(SHELVE_FILE, flag="r") as shelf:
+        for island in shelf.values():
             total += 1
             if island.is_current_week:
                 this_week += 1
@@ -88,15 +88,15 @@ def meta_stats() -> str:
 
 
 def user_stats(key: str) -> str:
-    with shelve.open(SHELVE_FILE, flag="r") as db:
-        island_data = db[key]
+    with shelve.open(SHELVE_FILE, flag="r") as shelf:
+        island_data = shelf[key]
     return "\n".join(island_data.summary())
 
 
 def all_stats() -> str:
     islands = []
-    with shelve.open(SHELVE_FILE, flag="r") as db:
-        for week_data in db.values():
+    with shelve.open(SHELVE_FILE, flag="r") as shelf:
+        for week_data in shelf.values():
             if week_data.is_current_week:
                 islands.append(week_data.island)
 
@@ -129,13 +129,13 @@ def all_stats() -> str:
 
 # Modifying functions
 def rename(key: str, island_name: str) -> None:
-    with shelve.open(SHELVE_FILE) as db:
-        data = db.get(key)
+    with shelve.open(SHELVE_FILE) as shelf:
+        data = shelf.get(key)
         if not data:
             default_name = f"Island {key[-3:]}"
             data = WeekData(island=Island(name=default_name, data=IslandModel(timeline={})))
         data.rename(island_name)
-        db[key] = data
+        shelf[key] = data
 
 
 def log(ctx: commands.Context, price: int, time: Optional[str] = None) -> str:
@@ -146,8 +146,8 @@ def log(ctx: commands.Context, price: int, time: Optional[str] = None) -> str:
             return f"{time} is not a valid time period. Try 'Monday_PM' or 'Friday_AM'."
 
     key = str(ctx.author.id)
-    with shelve.open(SHELVE_FILE) as db:
-        data = db.get(key)
+    with shelve.open(SHELVE_FILE) as shelf:
+        data = shelf.get(key)
         if not data:
             default_name = f"Island {key[-3:]}"
             data = WeekData(island=Island(name=default_name, data=IslandModel(timeline={})))
@@ -159,26 +159,26 @@ def log(ctx: commands.Context, price: int, time: Optional[str] = None) -> str:
                     f"or specify time period with `!turnip log {price} [Monday_AM]` or similar."
                 )
             # Get message created time (which is UTC) and convert to user's local time
-            ts = ctx.message.created_at.replace(tzinfo=timezone.utc).astimezone(data.timezone)
-            logger.info("Computed local message time as %s", ts.isoformat())
+            timestamp = ctx.message.created_at.replace(tzinfo=timezone.utc).astimezone(data.timezone)
+            logger.info("Computed local message time as %s", timestamp.isoformat())
             try:
-                time = utils.datetime_to_timeperiod(ts)
+                time = utils.datetime_to_timeperiod(timestamp)
                 logger.info("Trunip time period is %s", time)
             except ValueError as exc:
                 return str(exc).format(price=price)
         data.set_price(price, time)
-        db[key] = data
+        shelf[key] = data
 
     return ""
 
 
 def set_timezone(key: str, zone_name: str) -> bool:
     success = False
-    with shelve.open(SHELVE_FILE) as db:
-        data = db.get(key)
+    with shelve.open(SHELVE_FILE) as shelf:
+        data = shelf.get(key)
         if not data:
             default_name = f"Island {key[-3:]}"
             data = WeekData(island=Island(name=default_name, data=IslandModel(timeline={})))
         success = data.set_tz(zone_name)
-        db[key] = data
+        shelf[key] = data
     return success
