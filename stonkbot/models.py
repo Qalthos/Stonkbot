@@ -85,7 +85,7 @@ class WeekData:
         buy_price = self.timeline.get(TimePeriod.Sunday_AM)
         if buy_price:
             fixed_points["Sunday_AM"] = buy_price
-            last_fixed = "Sunday_AM"
+            last_fixed = "Sunday_PM"
         for time, price_counts in self.models.histogram().items():
             if len(price_counts) == 1:
                 fixed_points[time] = list(price_counts.keys())[0]

@@ -97,7 +97,7 @@ def all_stats() -> str:
     with shelve.open(SHELVE_FILE, flag="r") as shelf:
         for week_data in shelf.values():
             if week_data.is_current_week:
-                islands.append(week_data.island)
+                islands.append(week_data)
 
     stats = _islands_to_stats(islands)
 
