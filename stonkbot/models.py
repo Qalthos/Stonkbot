@@ -72,7 +72,7 @@ class WeekData:
     def set_tz(self, zone_name: str) -> bool:
         if tz.gettz(zone_name):
             self.tz_name = zone_name
-            self.updated.replace(tzinfo=self.timezone)
+            self.updated = self.updated.astimezone(self.timezone)
             return True
         return False
 
