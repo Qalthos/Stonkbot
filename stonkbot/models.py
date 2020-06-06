@@ -49,7 +49,7 @@ class WeekData:
     def set_price(self, price: int, time: TimePeriod) -> None:
         if not self.is_current_week:
             if self.is_last_week:
-                self.set_previous_week()
+                self._previous_week = self.current_pattern
                 self._initial_week = False
             self.timeline = {}
 
@@ -60,14 +60,6 @@ class WeekData:
         elif time in self.timeline:
             del self.timeline[time]
         self.updated = datetime.now(tz=self.timezone)
-
-    def set_previous_week(self) -> None:
-        model_counter = Counter(model.model_type for model in self.models.models)
-
-        if len(model_counter) == 1:
-            self._previous_week = model_counter.most_common()[0][0]
-        else:
-            self._previous_week = ModelEnum.unknown
 
     def set_tz(self, zone_name: str) -> bool:
         if tz.gettz(zone_name):
@@ -182,6 +174,14 @@ class WeekData:
                 continue
             models.fix_price(time, price)
         return models
+
+    @property
+    def current_pattern(self) -> ModelEnum:
+        model_counter = Counter(model.model_type for model in self.models.models)
+
+        if len(model_counter) == 1:
+            return model_counter.most_common()[0][0]
+        return ModelEnum.unknown
 
     @property
     def timezone(self) -> Optional[tzinfo]:
