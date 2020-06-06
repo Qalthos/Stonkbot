@@ -1,11 +1,13 @@
+import collections
 from dataclasses import dataclass, field
 from datetime import date, timezone
 import logging
 import operator
 import shelve
-from typing import Dict, List, Optional
+from typing import Counter, Dict, List, Optional
 
 from discord.ext import commands
+from turnips.model import ModelEnum
 from turnips.multi import RangeSet
 from turnips.ttime import TimePeriod
 
@@ -75,6 +77,7 @@ def meta_stats() -> str:
     total = 0
     this_week = 0
     current = 0
+    patterns: Counter[ModelEnum] = collections.Counter()
     with shelve.open(SHELVE_FILE, flag="r") as shelf:
         for island in shelf.values():
             total += 1
@@ -82,8 +85,10 @@ def meta_stats() -> str:
                 this_week += 1
             if island.has_current_period:
                 current += 1
+            patterns[island.current_pattern] += 1
 
-    return f"I know about {total} islands, of which {this_week} have data from this week and {current} have data for right now."
+    pattern_str = ", ".join(f"{count} {'has' if count == 1 else 'have'} pattern {model.name}" for model, count in patterns.items())
+    return f"I know about {total} islands, of which {this_week} have data from this week and {current} have data for right now.\n{pattern_str}"
 
 
 def user_stats(key: str) -> str:
