@@ -101,7 +101,8 @@ def all_stats() -> str:
     islands = []
     with shelve.open(SHELVE_FILE, flag="r") as shelf:
         for week_data in shelf.values():
-            if week_data.is_current_week:
+            # Only report islands with non-Sunday data
+            if week_data.has_week_data:
                 islands.append(week_data)
 
     stats = _islands_to_stats(islands)

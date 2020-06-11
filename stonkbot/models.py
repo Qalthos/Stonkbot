@@ -201,6 +201,19 @@ class WeekData:
         return sunday > self.updated > last_sunday
 
     @property
+    def has_week_data(self) -> bool:
+        # Check that we have any data for the week
+        if not (self.is_current_week and self.timeline):
+            return False
+
+        # If we have more than one datum, it has to have non-Sunday data
+        if len(self.timeline) > 1:
+            return True
+
+        # We only have one datum, so if Sunday_AM is present, it's just Sunday
+        return not self.timeline.get(TimePeriod.Sunday_AM, False)
+
+    @property
     def has_current_period(self) -> bool:
         now = datetime.now(tz=self.timezone)
         weekday = now.isoweekday() % 7
