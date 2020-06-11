@@ -22,7 +22,7 @@ logger = logging.getLogger("stonkbot")
 # Helper dataclasses & functions
 @dataclass
 class StatBundle:
-    max_price: int
+    price_range: RangeSet
     name: str
     confidence: str
 
@@ -48,15 +48,14 @@ def _islands_to_stats(islands: List[WeekData]) -> Dict[str, PriceBundle]:
 
             for price in price_counts.keys():
                 current_stat.prices.add(price)
-            max_price = max(price_counts.keys())
 
             price_type = "possibility"
-            if len(island.models) == 1:
+            if island.current_pattern != ModelEnum.unknown:
                 price_type = "range"
-            if len(price_counts) == 1:
+            if TimePeriod[time] in island.timeline:
                 price_type = "fixed"
 
-            current_stat.add_price(StatBundle(max_price, name=island.name, confidence=price_type))
+            current_stat.add_price(StatBundle(price_range=price_counts, name=island.name, confidence=price_type))
 
             stats[time] = current_stat
 
@@ -68,7 +67,7 @@ def _top_islands(top_prices: List[StatBundle], length: int = 3) -> str:
     for stat in top_prices[:length]:
         note = "*" if stat.confidence == "fixed" else "†" if stat.confidence == "possibility" else " "
         name = f"({stat.name})".ljust(12)
-        prices.append(f"{stat.max_price:3d}{note} {name}")
+        prices.append(f"{max(stat.price_range):3d}{note} {name}")
     return ' '.join(prices)
 
 
