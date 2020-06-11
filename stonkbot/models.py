@@ -177,10 +177,12 @@ class WeekData:
 
     @property
     def current_pattern(self) -> ModelEnum:
-        model_counter = Counter(model.model_type for model in self.models.models)
+        if self.is_current_week:
+            model_counter = Counter(model.model_type for model in self.models.models)
 
-        if len(model_counter) == 1:
-            return model_counter.most_common()[0][0]
+            if len(model_counter) == 1:
+                return model_counter.most_common()[0][0]
+
         return ModelEnum.unknown
 
     @property

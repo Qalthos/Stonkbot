@@ -37,7 +37,7 @@ class PriceBundle:
 
     @property
     def top_prices(self) -> List[StatBundle]:
-        return list(sorted(self._top_prices, key=operator.attrgetter("max_price"), reverse=True))
+        return list(sorted(self._top_prices, key=lambda x: max(x.price_range), reverse=True))
 
 
 def _islands_to_stats(islands: List[WeekData]) -> Dict[str, PriceBundle]:
@@ -92,7 +92,7 @@ def meta_stats() -> str:
     pattern_str = ", ".join(f"{count} {'has' if count == 1 else 'have'} pattern {model.name}" for model, count in patterns.items())
     return "\n".join([
         f"I know about {total} islands, of which {this_sunday} have any data from this week, "
-        "{this_week} have data from this week other than Sunday prices, and {current} have data for right now.",
+        f"{this_week} have data from this week other than Sunday prices, and {current} have data for right now.",
         pattern_str,
     ])
 
