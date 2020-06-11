@@ -75,6 +75,7 @@ def _top_islands(top_prices: List[StatBundle], length: int = 3) -> str:
 # Read-only functions
 def meta_stats() -> str:
     total = 0
+    this_sunday = 0
     this_week = 0
     current = 0
     patterns: Counter[ModelEnum] = collections.Counter()
@@ -82,13 +83,19 @@ def meta_stats() -> str:
         for island in shelf.values():
             total += 1
             if island.is_current_week:
+                this_sunday += 1
+            if island.has_week_data:
                 this_week += 1
             if island.has_current_period:
                 current += 1
             patterns[island.current_pattern] += 1
 
     pattern_str = ", ".join(f"{count} {'has' if count == 1 else 'have'} pattern {model.name}" for model, count in patterns.items())
-    return f"I know about {total} islands, of which {this_week} have data from this week and {current} have data for right now.\n{pattern_str}"
+    return "\n".join([
+        f"I know about {total} islands, of which {this_sunday} have any data from this week, "
+        "{this_week} have data from this week other than Sunday prices, and {current} have data for right now.",
+        pattern_str,
+    ])
 
 
 def user_stats(key: str) -> str:
