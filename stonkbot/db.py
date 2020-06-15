@@ -44,6 +44,9 @@ def _islands_to_stats(islands: List[WeekData]) -> Dict[str, PriceBundle]:
     stats: Dict[str, PriceBundle] = {}
     for island in islands:
         for time, price_counts in island.models.histogram().items():
+            if not island.is_current_week:
+                continue
+
             current_stat = stats.get(time, PriceBundle())
 
             for price in price_counts.keys():
@@ -83,6 +86,9 @@ def meta_stats() -> str:
             total += 1
             if island.is_current_week:
                 this_sunday += 1
+            else:
+                continue
+
             if island.has_week_data:
                 this_week += 1
             if island.has_current_period:
