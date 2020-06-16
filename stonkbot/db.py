@@ -2,7 +2,6 @@ import collections
 from dataclasses import dataclass, field
 from datetime import date, timezone
 import logging
-import operator
 import shelve
 from typing import Counter, Dict, List, Optional
 
@@ -58,7 +57,9 @@ def _islands_to_stats(islands: List[WeekData]) -> Dict[str, PriceBundle]:
             if TimePeriod[time] in island.timeline:
                 price_type = "fixed"
 
-            current_stat.add_price(StatBundle(price_range=price_counts, name=island.name, confidence=price_type))
+            current_stat.add_price(
+                StatBundle(price_range=price_counts, name=island.name, confidence=price_type)
+            )
 
             stats[time] = current_stat
 
