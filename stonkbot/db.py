@@ -77,29 +77,25 @@ def _top_islands(top_prices: List[StatBundle], length: int = 3) -> str:
 
 # Read-only functions
 def meta_stats() -> str:
-    total = 0
-    this_sunday = 0
-    this_week = 0
     current = 0
     patterns: Counter[ModelEnum] = collections.Counter()
     with shelve.open(SHELVE_FILE, flag="r") as shelf:
-        for island in shelf.values():
-            total += 1
-            if island.is_current_week:
-                this_sunday += 1
-            else:
-                continue
+        viable_islands = [island for island in shelf.values() if island.has_week_data]
 
-            if island.has_week_data:
-                this_week += 1
+        total = len(shelf)
+        this_week = len(viable_islands)
+        for island in viable_islands:
             if island.has_current_period:
                 current += 1
             patterns[island.current_pattern] += 1
 
-    pattern_str = ", ".join(f"{count} {'has' if count == 1 else 'have'} pattern {model.name}" for model, count in patterns.items())
+    pattern_str = ", ".join(
+        f"{_plural_has(count)} pattern {model.name}"
+        for model, count in patterns.items()
+    )
     return "\n".join([
-        f"I know about {total} islands, of which {this_sunday} have any data from this week, "
-        f"{this_week} have data from this week other than Sunday prices, and {current} have data for right now.",
+        f"I know about {total} islands, of which {_plural_has(this_week)} sale prices from this "
+        f"week, and {_plural_has(current)} a sale price for right now.",
         pattern_str,
     ])
 
@@ -200,3 +196,8 @@ def set_timezone(key: str, zone_name: str) -> bool:
         success = data.set_tz(zone_name)
         shelf[key] = data
     return success
+
+
+# Private utils
+def _plural_has(count: int) -> str:
+    return f"{count} {'has' if count == 1 else 'have'}"
