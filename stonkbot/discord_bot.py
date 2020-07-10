@@ -7,7 +7,6 @@ from discord.ext import commands
 
 from stonkbot import db
 
-
 logger = logging.getLogger("stonkbot")
 
 
@@ -71,6 +70,8 @@ async def stats(ctx: commands.Context, target: Optional[str] = None) -> None:
         msg = db.meta_stats()
     elif target == "all":
         msg = db.all_stats()
+    elif target == "records":
+        msg = db.records()
     else:
         logger.warning("Invalid target %s", target)
         return

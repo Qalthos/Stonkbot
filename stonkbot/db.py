@@ -1,8 +1,9 @@
 import collections
-from dataclasses import dataclass, field
-from datetime import date, timezone
 import logging
 import shelve
+from dataclasses import dataclass, field
+from datetime import date, timezone
+from operator import attrgetter
 from typing import Counter, Dict, List, Optional
 
 from discord.ext import commands
@@ -10,9 +11,8 @@ from turnips.model import ModelEnum
 from turnips.multi import RangeSet
 from turnips.ttime import TimePeriod
 
-from stonkbot.models import WeekData
 from stonkbot import utils
-
+from stonkbot.models import WeekData
 
 SHELVE_FILE = "turnips.db"
 logger = logging.getLogger("stonkbot")
@@ -139,6 +139,16 @@ def all_stats() -> str:
     msg.append("† number is possible on island, but pattern has not been confirmed")
 
     return "\n".join(msg)
+
+
+def records() -> str:
+    with shelve.open(SHELVE_FILE, flag="r") as shelf:
+        known_records = [island for island in shelf.values() if island.record.price >= 300]
+
+    return "\n".join(
+        f"{island.name} saw {island.record.price} on {island.record.date.isoformat()} {'AM' if island.record.is_am else 'PM'}"
+        for island in sorted(known_records, key=attrgetter("record.price"))
+    )
 
 
 # Modifying functions
