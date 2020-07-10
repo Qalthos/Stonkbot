@@ -147,7 +147,7 @@ def records() -> str:
 
     return "\n".join(
         f"{island.name} saw {island.record.price} on {island.record.date.isoformat()} {'AM' if island.record.is_am else 'PM'}"
-        for island in sorted(known_records, key=attrgetter("record.price"))
+        for island in sorted(known_records, key=attrgetter("record.price"), reverse=True)
     )
 
 
@@ -187,7 +187,7 @@ def log(ctx: commands.Context, price: int, time: Optional[str] = None) -> str:
             logger.info("Computed local message time as %s", timestamp.isoformat())
             try:
                 time = utils.datetime_to_timeperiod(timestamp)
-                logger.info("Trunip time period is %s", time)
+                logger.info("Turnip time period is %s", time)
             except ValueError as exc:
                 return str(exc).format(price=price)
         data.set_price(price, time)
