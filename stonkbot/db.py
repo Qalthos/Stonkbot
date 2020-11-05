@@ -1,8 +1,9 @@
 import collections
-from dataclasses import dataclass, field
-from datetime import date, timezone
 import logging
 import shelve
+from dataclasses import dataclass, field
+from datetime import date, timezone
+from operator import attrgetter
 from typing import Counter, Dict, List, Optional
 
 from discord.ext import commands
@@ -10,9 +11,8 @@ from turnips.model import ModelEnum
 from turnips.multi import RangeSet
 from turnips.ttime import TimePeriod
 
-from stonkbot.models import WeekData
 from stonkbot import utils
-
+from stonkbot.models import WeekData
 
 SHELVE_FILE = "turnips.db"
 logger = logging.getLogger("stonkbot")
@@ -141,6 +141,16 @@ def all_stats() -> str:
     return "\n".join(msg)
 
 
+def records() -> str:
+    with shelve.open(SHELVE_FILE, flag="r") as shelf:
+        known_records = [island for island in shelf.values() if island.record.price >= 300]
+
+    return "\n".join(
+        f"{island.name} saw {island.record.price} on {island.record.date.isoformat()} {'AM' if island.record.is_am else 'PM'}"
+        for island in sorted(known_records, key=attrgetter("record.price"), reverse=True)
+    )
+
+
 # Modifying functions
 def rename(key: str, island_name: str) -> None:
     with shelve.open(SHELVE_FILE) as shelf:
@@ -177,7 +187,7 @@ def log(ctx: commands.Context, price: int, time: Optional[str] = None) -> str:
             logger.info("Computed local message time as %s", timestamp.isoformat())
             try:
                 time = utils.datetime_to_timeperiod(timestamp)
-                logger.info("Trunip time period is %s", time)
+                logger.info("Turnip time period is %s", time)
             except ValueError as exc:
                 return str(exc).format(price=price)
         data.set_price(price, time)
